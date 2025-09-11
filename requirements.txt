@@ -1,0 +1,9 @@
+opencv-python>=4.10
+numpy>=1.26
+matplotlib>=3.8
+easyocr>=1.7
+sqlalchemy>=2.0
+pillow>=10.4
+python-dotenv>=1.0
+imutils>=0.5streamlit
+ipykernel
