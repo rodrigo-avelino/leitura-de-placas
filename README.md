@@ -1,191 +1,93 @@
-# Leitura Automática de Placas (ALPR)
+# ALPR — Sistema de Leitura Automática de Placas
 
-**Objetivo:** identificar e registrar automaticamente placas de veículos a partir de imagens, para controle de entradas/saídas em estacionamentos comunitários.  
-**Equipe:** Victor Kainã, Rodrigo Avelino, João Vitor e Guilherme Paiva.  
-**Repo:** https://github.com/Kainan7/leitura-automatica-placas
-
----
-
-## ✨ Funcionalidades
-- Detecção **heurística** via contornos (didático) + *inner crop* para reduzir ruído (parafusos/aro).
-- OCR com **EasyOCR** (pt/en/es), correções O↔0, I↔1, S↔5, B↔8, Z↔2 e **fallback**.
-- Padrões validados:
-  - BR antigo `AAA9999`, BR Mercosul `AAA9A99`
-  - 2L-4D `CC5220` (diplomática/serviço), 3L-3D `ABC123` (LATAM), AR Mercosul `AA000AA`
-- Persistência em **SQLite** (placa, confiança, caminhos de imagens, data/hora).
-- **CLI** para lote, **Notebook PDI** (grayscale, histograma, equalização e CLAHE) e **UI Web (Streamlit)** com upload + consulta.
+Este projeto implementa um **sistema de reconhecimento automático de placas veiculares (ALPR)** utilizando **Python + OpenCV + OCR + Streamlit**.  
+A aplicação permite **processar imagens de veículos**, extrair e validar a placa, armazenar os resultados em banco de dados e consultar registros anteriores por meio de uma interface web.
 
 ---
 
-## 🧱 Estrutura
-```text
-.
-├── src/
-│ ├── app_cli.py # CLI (processa uma imagem ou pasta)
-│ ├── config.py # .env, pastas e paths
-│ ├── db.py # SQLAlchemy + modelo AccessRecord
-│ ├── detect.py # detecção por contornos (baseline)
-│ ├── ocr.py # EasyOCR + validação + correções + fallback
-│ └── pipeline.py # orquestra: detecta → OCR → salva → grava no banco
-├── scripts/
-│ └── init_db.py # cria as tabelas
-├── app_streamlit.py # interface web
-├── PDI_ALPR_Exploracao.ipynb # notebook de PDI (pode estar em src/)
-├── requirements.txt
-├── .env.example
-├── .gitignore
-└── data/ # (gitignored)
-├── images/ # imagens de entrada
-└── output/ # saídas (recortes/anotações)
+## 📌 Funcionalidades
 
-yaml
-```
-
-> Dica: execute sempre a partir da **raiz** do projeto.
+- **Upload de imagens** (JPG/PNG).  
+- **Pipeline de visão computacional**:
+  1. Pré-processamento da imagem (grayscale, equalização, CLAHE).  
+  2. Detecção de bordas e contornos.  
+  3. Filtro de candidatos a placa.  
+  4. Recorte da placa.  
+  5. Binarização.  
+  6. Segmentação de caracteres.  
+  7. OCR (placa inteira e por caracteres).  
+  8. Montagem da sequência.  
+  9. Validação da placa segundo padrão BR.  
+- **Armazenamento no banco de dados**: placa reconhecida, confiança, data/hora, caminhos das imagens (original, recorte, anotada).  
+- **Histórico de consultas**: filtro por placa e intervalo de datas, agrupamento por mais recente.  
+- **Exibição das etapas de processamento** para análise didática.
 
 ---
 
-## 💻 Requisitos
-- Python **3.10+**
-- Git
-- Windows (testado com **Git Bash** e **PowerShell**)
+## 🗂️ Estrutura do Projeto
+src/
+├── app.py # Aplicação principal Streamlit
+├── components/ # Componentes de UI (upload box, etapas, filtros, etc.)
+├── controllers/ # Lógica de controle (PlacaController, ConsultaController)
+├── services/ # Serviços do pipeline (bordas, contornos, OCR, validação, etc.)
+├── models/ # Modelos ORM (AccessRecord, TabelaAcesso)
+├── pages/ # Instancia das page do Front UI
+├── config/ # Configurações do banco (SQLAlchemy)
+├       └── banco
+├               └── placas.db (banco de dados nessa pasta)
+├── static/ # Imagens geradas, utilizada pasta teste no back (uploads, crops, annotated, steps)
+
+
+## ⚙️ Tecnologias Utilizadas
+
+- **Python 3.10+**
+- **Streamlit** — front-end rápido e interativo.
+- **OpenCV** — processamento de imagem (pré-processamento, bordas, contornos, recorte).
+- **easyOCR** — reconhecimento óptico de caracteres.
+- **SQLAlchemy** — ORM para persistência no banco de dados.
+- **SQLite** — banco de dados para registros de placas.
 
 ---
 
-## 🚀 Instalação
+## ▶️ Como Rodar
 
-### Git Bash (recomendado)
-```bash
-git clone https://github.com/Kainan7/leitura-automatica-placas.git
-cd leitura-automatica-placas
+1. **Clone o repositório**
+   ```bash
+   git clone https://github.com/seu-repo/alpr.git
 
-python -m venv .venv
-source .venv/Scripts/activate
+2. **Ambiente virtual**
+    ```bash
+    python -m venv venv
 
-python -m pip install --upgrade pip
-pip install -r requirements.txt
+3. **baixa as dependencias**
+    ```bash
+    pip install -r requirements.txt
 
-PowerShell
-git clone https://github.com/Kainan7/leitura-automatica-placas.git
-cd leitura-automatica-placas
+4. **cria o banco**
+    ```bash
+    python banco.py
 
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
+5. **rode a aplicacao**
+    ```bash
+    streamlit run app.py
 
-python -m pip install --upgrade pip
-pip install -r requirements.txt
+## Front END
 
-⚙️ Configuração (.env) e banco
-Crie um .env (ou copie de .env.example):
+--**Processar Imagem**
+--**Consulta registros**
 
-ini
-DB_URL=sqlite:///data/acessos.sqlite3
-IMAGE_DIR=data/images
-OUTPUT_DIR=data/output
-Inicialize o banco:
+*ainda precisa ajustar o front end*
 
-python scripts/init_db.py
+## 📖 Fluxo do Pipeline Do Back End
+    1.Upload → usuário envia imagem.
+    2.Pré-processamento → equalização, contraste, CLAHE.
+    3.Detecção de contornos e bordas → encontra regiões candidatas.
+    4.Filtro de candidatos → descarta falsos positivos.
+    5.Recorte da placa → gera imagem isolada.
+    6.Binarização + Segmentação → separa caracteres.
+    7.OCR → reconhecimento dos caracteres.
+    8.Montagem + Validação → gera a placa final. (essa parte precisa rever melhor, talvez consiga melhor mais)
+    9.Persistência → salva no banco a placa, score e imagens associadas.
+    10.Consulta → recupera registros por filtros no Streamlit.
 
-🧪 Teste rápido (CLI)
-Coloque imagens em data/images/ e rode:
-python -m src.app_cli --input data/images
-# PNG:
-# python -m src.app_cli --input data/images --pattern "*.png"
-Saídas em data/output/ e registros no data/acessos.sqlite3.
-
-📓 Notebook PDI
-Registrar a venv como kernel:
-
-python -m pip install ipykernel
-python -m ipykernel install --user --name alpr-venv --display-name "Python (alpr-venv)"
-
-Abrir:
-
-jupyter notebook
-Abrir PDI_ALPR_Exploracao.ipynb (ou src/pdi_alpr_exploracao.ipynb), selecionar o kernel Python (alpr-venv) e executar.
-Mostra: dimensões, grayscale + min/max, histogramas, equalização e CLAHE, detecção/crop e OCR.
-
-🌐 Aplicação Web (Streamlit)
-pip install streamlit
-streamlit run app_streamlit.py
-Abas
-
-📷 Processar imagem
-Upload → expander “Análise PDI (modo notebook)” (grayscale/histogramas/equalização/CLAHE/detecção/crop/candidatos) → Processar (salva por hash, roda pipeline e grava no banco).
-
-🔎 Consultar registros
-Filtro por trecho de placa e intervalo de datas.
-Agrupar por placa (mostra só o mais recente por placa).
-Evitamos duplicados: upload salvo por hash e janela de idempotência por (fonte+placa) na pipeline.
-
-🧰 Comandos úteis
-Ativar venv:
-
-Git Bash: source .venv/Scripts/activate
-
-PowerShell: .\\.venv\\Scripts\\Activate.ps1
-
-Ver últimos registros:
-
-python - << 'PY'
-from src.db import SessionLocal, AccessRecord
-s=SessionLocal()
-print([(r.id,r.plate_text,round(r.confidence or 0,2),r.created_at) for r in s.query(AccessRecord).order_by(AccessRecord.id.desc()).limit(10)])
-s.close()
-PY
-
-Limpar saídas:
-rm -f data/output/*     # Git Bash
-# del data\output\* -Force  (PowerShell)
-
-🛠️ Solução de problemas
-ModuleNotFoundError: dotenv → ative a venv e pip install -r requirements.txt.
-
-attempted relative import → execute na raiz e garanta src/__init__.py.
-
-Kernel errado no Jupyter → selecione Python (alpr-venv).
-
-Avisos do EasyOCR sobre GPU → normal se estiver em CPU.
-
-🗺️ Roadmap
-Detector YOLOv8 específico para placas.
-
-API REST (Flask/FastAPI).
-
-Exportar CSV/Excel de acessos.
-
-Dockerfile/Compose.
-
-📄 Licença
-MIT (adicione LICENSE se desejar).
-
-### Técnicas utilizadas (MVP)
-
-**Pré-processamento (PDI)**
-- Conversão para tons de cinza (BGR → Gray)
-- Equalização de histograma e **CLAHE** (na análise PDI)
-- **Inner-crop** (~8% das bordas) no recorte da placa para reduzir ruído (moldura/parafusos)
-
-**Detecção de placa (baseline)**
-- **Bordas/contornos** + heurísticas geométricas (razão de aspecto, área) para estimar a **bbox**
-
-**OCR e pós-processamento**
-- **EasyOCR** (pt/en/es)
-- Normalização/limpeza + correções de ambiguidade: **O↔0, I↔1, S↔5, B↔8, Z↔2**
-- **Validação por regex** dos formatos: `AAA9999`, `AAA9A99`, `CC5220`, `ABC123`, `AA000AA`
-
-**Persistência e idempotência**
-- **SQLite + SQLAlchemy**
-- Upload salvo por **hash**; janela curta evita duplicatas por *(fonte+placa)*
-
-### Fluxo de processamento
-
-1. **Entrada**: caminho da imagem  
-2. **Carregar** (OpenCV)  
-3. **Detecção** por contornos → **bbox**  
-4. **Recorte** da placa + **inner-crop**  
-5. **OCR (EasyOCR)** no recorte  
-6. **Pós-processamento**: normaliza, corrige, **valida por regex**, escolhe melhor candidato  
-7. **Anotação**: desenha bbox/texto na original  
-8. **Salvar saídas** (recorte/anotada) e **gravar no SQLite** (com proteção de duplicidade)  
-9. **Retorno**: `id`, `plate_text`, `confidence`, `crop_path`, `annotated_path`, `candidates`
+Back end ja esta finalizado, com possiveis revisoes posteriores para melhor a validacao e montagem dos caracteres para algumas situacoes mais graves
