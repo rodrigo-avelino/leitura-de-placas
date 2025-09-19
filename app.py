@@ -1,26 +1,23 @@
 import streamlit as st
+from src.pages import processarImagemPage, consultarRegistroPage
+from src.components.navbar import navbar
 
-from src.pages.processarImagemPage import app as processar_imagem_app
-from src.pages.consultarRegistroPage import app as consultar_registro_app
+st.set_page_config(page_title="Sistema de Reconhecimento de Placas", layout="wide")
 
+from streamlit import session_state
 
-# ---- Configuração geral da aplicação ----
-st.set_page_config(
-    page_title="Reconhecimento de Placas",
-    page_icon="🚘",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+if "page" not in session_state:
+    session_state.page = "processar"
 
-# ---- Sidebar ----
-st.sidebar.title("📂 Navegação")
-pagina = st.sidebar.radio(
-    "Escolha a página:",
-    ("🔍 Processar Imagem", "📑 Consultar Registros")
-)
+# Navbar modular
+navbar(session_state.page)
 
-# ---- Roteamento ----
-if pagina == "🔍 Processar Imagem":
-    processar_imagem_app()
-elif pagina == "📑 Consultar Registros":
-    consultar_registro_app()
+# Captura navegação por POST
+if st.session_state.get("page") != session_state.page:
+    session_state.page = st.session_state.get("page", session_state.page)
+
+# Renderizar página ativa
+if session_state.page == "processar":
+    processarImagemPage.app()
+elif session_state.page == "consultar":
+    consultarRegistroPage.app()

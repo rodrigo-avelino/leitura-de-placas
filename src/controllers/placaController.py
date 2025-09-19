@@ -30,7 +30,7 @@ for d in [UPLOAD_DIR, ANNOTATED_DIR, CROP_DIR]:
 class PlacaController:
 
     @staticmethod
-    def processarImagem(nome_arquivo: str):
+    def processarImagem(nome_arquivo: str, data_capturada: datetime):
         caminho = UPLOAD_DIR / nome_arquivo
         if not caminho.exists():
             raise FileNotFoundError(f"Imagem {caminho} não encontrada")
@@ -94,7 +94,8 @@ class PlacaController:
                 score=1.0,
                 img_source=img_bgr,
                 img_crop=crop_rgb,
-                img_annot=img_bgr  # ou a imagem anotada com retângulo, se você gerar
+                img_annot=img_bgr,  # ou a imagem anotada com retângulo, se você gerar
+                data_capturada=data_capturada
             )
             status = "ok"
         else:
@@ -110,11 +111,6 @@ class PlacaController:
 
     @staticmethod
     def consultarRegistros(placa: str = None, data_inicio: datetime = None, data_fim: datetime = None):
-        """
-        Consulta registros no banco com filtros opcionais.
-        - placa: busca por parte ou placa exata
-        - data_inicio, data_fim: intervalo de datas
-        """
         db = SessionLocal()
         try:
             query = db.query(TabelaAcesso)
