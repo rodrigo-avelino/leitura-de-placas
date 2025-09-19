@@ -1,48 +1,72 @@
 import streamlit as st
 from datetime import datetime
 from src.controllers.placaController import PlacaController
-from src.components.pdiPanel import painel_pdi      # novo componente
-from src.components.etapasPDI import mostrar_etapas  # mantém para compatibilidade / debug :contentReference[oaicite:3]{index=3}
+from src.components.pdiPanel import panelPDI
 
-def app():
-    st.title("🔍 Processar Imagem")
+class ProcessarImagemPage:
 
-    # Data e Hora
-    st.subheader("📅 Data e Hora da Captura")
-    c1, c2 = st.columns(2)
-    with c1:
-        data_captura = st.date_input("Data", value=datetime.today())
-    with c2:
-        hora_captura = st.time_input("Hora", value=datetime.now().time())
+    def app():
+        st.title("Processar Imagem")
 
-    # Upload
-    st.subheader("📤 Upload de Imagens")
-    uploaded_files = st.file_uploader(
-        "Clique para selecionar imagens ou arraste aqui",
-        type=["png", "jpg", "jpeg"],
-        accept_multiple_files=True
-    )
+        # Data e hora
+        st.subheader("Data e Hora da Captura")
+        c1, c2 = st.columns(2)
+        with c1:
+            data_captura = st.date_input("Data", value=datetime.today())
+        with c2:
+            hora_captura = st.time_input("Hora", value=datetime.now().time())
 
-    # CTA
-    processar = st.button("🚀 Processar", type="primary")
+        # Upload
+        st.subheader("Upload de Imagens")
+        uploaded_files = st.file_uploader(
+            "Selecione imagens ou arraste para cá",
+            type=["png", "jpg", "jpeg"],
+            accept_multiple_files=True,
+        )
 
-    if processar:
-        if not uploaded_files:
-            st.warning("Envie ao menos 1 imagem para processar.")
-            return
+        # Estado do painel
+        if "pdi_result" not in st.session_state:
+            st.session_state["pdi_result"] = {}
 
-        for file in uploaded_files:
-            with st.status(f"Processando **{file.name}**…", expanded=True) as status:
-                dt_captura = datetime.combine(data_captura, hora_captura)
-                # seu controller faz todo o pipeline e retorna o dict com as imagens de cada etapa
-                result = PlacaController.processarImagem(file.name, dt_captura)  # ajuste no controller p/ aceitar data
+        # Painel sempre visível
+        panel_placeholder = st.empty()
+        with panel_placeholder.container():
+            panelPDI(st.session_state["pdi_result"])
 
-                # Painel PDI com “crops” por etapa
-                painel_pdi(result)  # exibe os cards por etapa com o resultado de cada uma
+        # Botão
+        if st.button("Processar", type="primary"):
+            if not uploaded_files:
+                st.warning("Envie ao menos 1 imagem para processar.")
+                return
 
-                # (Opcional) manter a visualização antiga para validação rápida
-                # mostrar_etapas(result)  # usa sua função atual de exibir imagens por chave :contentReference[oaicite:4]{index=4}
+            for file in uploaded_files:
+                # zera painel para cada arquivo (se preferir, acumule embaixo)
+                st.session_state["pdi_result"] = {}
+                with panel_placeholder.container():
+                    panelPDI(st.session_state["pdi_result"])
 
-                status.update(label=f"✅ {file.name} finalizado", state="complete")
+                def on_update(delta: dict):
+                    st.session_state["pdi_result"].update(delta)
+                    with panel_placeholder.container():
+                        panelPDI(st.session_state["pdi_result"])
 
-        st.success("Processamento concluído!")
+                with st.status(f"Processando {file.name}…", expanded=True) as status:
+                    dt_captura = datetime.combine(data_captura, hora_captura)
+
+                    result = PlacaController.processarImagem(
+                        file,           
+                        dt_captura,
+                        on_update=on_update
+                    )
+
+                    st.session_state["pdi_result"].update(result.get("panel", {}))
+                    with panel_placeholder.container():
+                        panelPDI(st.session_state["pdi_result"])
+
+                    placa = result.get("texto_final")
+                    if placa:
+                        st.success(f"Placa reconhecida: {placa}")
+                        status.update(label=f"{file.name} finalizado (OK: {placa})", state="complete")
+                    else:
+                        st.warning("Não foi possível validar a placa.")
+                        status.update(label=f"{file.name} finalizado (sem validação)", state="complete")

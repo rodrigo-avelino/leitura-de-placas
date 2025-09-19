@@ -1,23 +1,18 @@
 import streamlit as st
-from src.pages import processarImagemPage, consultarRegistroPage
 from src.components.navbar import navbar
+from src.pages.processarImagemPage import ProcessarImagemPage
+from src.pages.consultarRegistroPage import consultarRegistroPage
 
 st.set_page_config(page_title="Sistema de Reconhecimento de Placas", layout="wide")
 
-from streamlit import session_state
+page = st.query_params.get("page", "processar")
+if isinstance(page, list):
+    page = page[0]
+st.session_state.page = page
 
-if "page" not in session_state:
-    session_state.page = "processar"
+navbar(st.session_state.page)
 
-# Navbar modular
-navbar(session_state.page)
-
-# Captura navegação por POST
-if st.session_state.get("page") != session_state.page:
-    session_state.page = st.session_state.get("page", session_state.page)
-
-# Renderizar página ativa
-if session_state.page == "processar":
-    processarImagemPage.app()
-elif session_state.page == "consultar":
+if st.session_state.page == "processar":
+    ProcessarImagemPage.app()
+else:
     consultarRegistroPage.app()
