@@ -1,6 +1,7 @@
 import cv2
+import numpy as np
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta  # <<< precisa do timedelta
 
 from src.services.preprocessamento import Preprocessamento
 from src.services.binarizacao import Binarizacao
@@ -37,8 +38,12 @@ class PlacaController:
 
         resultados = {}
 
-        # 1) Carregar
-        img_bgr = cv2.imread(str(caminho))
+        # 1) Carregar (fallback robusto para caminhos com acentos/OneDrive)
+        data = np.fromfile(str(caminho), dtype=np.uint8)
+        img_bgr = cv2.imdecode(data, cv2.IMREAD_COLOR)
+        if img_bgr is None:
+            raise FileNotFoundError(f"Falha ao ler a imagem: {caminho}")
+
         resultados["original"] = img_bgr
 
         # 2) Pré-processamento
@@ -77,6 +82,7 @@ class PlacaController:
         texto_raw = OCR.executarImg(crop_rgb)
         texto_chars = OCR.executarCaracteres(chars)
         resultados["ocr_raw"] = texto_raw
+        Resultados_ocr_chars = texto_chars
         resultados["ocr_chars"] = texto_chars
 
         # 10) Montagem
@@ -94,7 +100,7 @@ class PlacaController:
                 score=1.0,
                 img_source=img_bgr,
                 img_crop=crop_rgb,
-                img_annot=img_bgr  # ou a imagem anotada com retângulo, se você gerar
+                img_annot=img_bgr  # se gerar imagem anotada, substitua aqui
             )
             status = "ok"
         else:
@@ -103,9 +109,7 @@ class PlacaController:
         return {
             "status": status,
             "texto_final": texto_final,
-            "etapas": resultados,
-            "caminho_crop": str(CROP_DIR / f"crop_{nome_arquivo}"),
-            "caminho_annotated": str(ANNOTATED_DIR / f"annotated_{nome_arquivo}")
+            "etapas": resultados
         }
 
     @staticmethod
@@ -113,7 +117,7 @@ class PlacaController:
         """
         Consulta registros no banco com filtros opcionais.
         - placa: busca por parte ou placa exata
-        - data_inicio, data_fim: intervalo de datas
+        - data_inicio, data_fim: intervalo de datas (data_fim é inclusiva)
         """
         db = SessionLocal()
         try:
@@ -126,7 +130,9 @@ class PlacaController:
                 query = query.filter(TabelaAcesso.created_at >= data_inicio)
 
             if data_fim:
-                query = query.filter(TabelaAcesso.created_at <= data_fim)
+                # tornar inclusivo: [data_inicio, data_fim 23:59:59]
+                data_fim_exclusivo = data_fim + timedelta(days=1)
+                query = query.filter(TabelaAcesso.created_at < data_fim_exclusivo)
 
             registros = query.order_by(TabelaAcesso.created_at.desc()).all()
 
@@ -135,10 +141,11 @@ class PlacaController:
                 resultados.append({
                     "placa": r.plate_text,
                     "score": r.confidence,
-                    "caminho_origem": r.source_path,
-                    "caminho_crop": r.plate_crop_path,
-                    "caminho_annotated": r.annotated_path,
                     "data_hora": r.created_at.strftime("%d/%m/%Y %H:%M:%S"),
+                    # Se quiser renderizar imagens na página, descomente:
+                    # "source_image": r.source_image,
+                    # "plate_crop_image": r.plate_crop_image,
+                    # "annotated_image": r.annotated_image,
                 })
 
             return resultados
