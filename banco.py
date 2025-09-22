@@ -1,4 +1,5 @@
-from config.db import criarTabela
+
+from src.config.db import criarTabela
 
 if __name__ == "__main__":
     criarTabela()

@@ -1,95 +1,13 @@
-# Byte-compiled / optimized / DLL files
+.venv/
 __pycache__/
-*.py[cod]
-*$py.class
+*.pyc
 
-# C extensions
-*.so
+# imagens locais de teste
+*.jpg
+*.png
 
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-*.egg-info/
-.installed.cfg
-*.egg
+# uploads feitos pelo app
+src/static/uploads/
 
-*.manifest
-*.spec
-
-pip-log.txt
-pip-delete-this-directory.txt
-
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-
-*.mo
-*.pot
-
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-
-instance/
-.webassets-cache
-
-.scrapy
-
-docs/_build/
-
-target/
-
-.ipynb_checkpoints
-
-profile_default/
-ipython_config.py
-
-.python-version
-
-Pipfile.lock
-
-poetry.lock
-
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-.vscode/
-
-.DS_Store
-
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-
-~$*
-*.tmp
-
-.env
-.env.*
-
-venv/
-ENV/
-env/
-env.bak/
-venv.bak/
+# banco local
+src/config/banco/*.db
