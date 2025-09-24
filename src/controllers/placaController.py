@@ -184,7 +184,26 @@ class PlacaController:
             Persistencia.salvar(texto_final, 1.0, original, crop_rgb, img_annot, data_capturada)
 
         # ATENÇÃO: a chave "binarizacao" aqui agora contém a imagem, não o dicionário
-        return { "status": status, "texto_final": texto_final, "panel": panel, "etapas": { "original": original, "preprocessamento": preproc, "bordas": edges, "contornos": contours, "candidatos": candidatos, "recorte": crop_rgb, "binarizacao": bin_img, "segmentacao": chars, "ocr_raw": texto_raw, "ocr_chars": texto_chars, "montagem": montagem_final, "validacao": texto_final } }
+        return { 
+            "status": status, 
+            "texto_final": texto_final, 
+            "panel": panel, 
+            "etapas": { 
+                "original": original, 
+                "preprocessamento": preproc, 
+                "bordas": edges, 
+                "contornos": contours, 
+                "candidatos": candidatos, 
+                "recorte": crop_rgb, 
+                "binarizacao": bin_img, 
+                "segmentacao": chars, 
+                "ocr_raw": texto_raw, 
+                "ocr_chars": texto_chars, 
+                "montagem": montagem_final, 
+                "validacao": texto_final 
+                } 
+            }
+    
     @staticmethod
     def consultarRegistros(arg=None, data_inicio: datetime = None, data_fim: datetime = None):
         """
@@ -192,14 +211,11 @@ class PlacaController:
         - arg: pode ser dict com {placa, data_inicio, data_fim} ou str com a placa
         - data_fim é inclusiva (ajustado com timedelta)
         """
-        from src.config.db import SessionLocal
-        from src.models.acessoModel import TabelaAcesso
-
+        
         placa = None
         if isinstance(arg, dict):
             placa = arg.get("placa")
             data_inicio = arg.get("data_inicio", data_inicio)
-            data_fim = arg.get("data_fim", data_fim)
             data_fim = arg.get("data_fim", data_fim)
         else:
             placa = arg
@@ -212,7 +228,6 @@ class PlacaController:
             if data_inicio:
                 query = query.filter(TabelaAcesso.created_at >= data_inicio)
             if data_fim:
-                # tornar inclusivo: [data_inicio, data_fim 23:59:59]
                 data_fim_exclusivo = data_fim + timedelta(days=1)
                 query = query.filter(TabelaAcesso.created_at < data_fim_exclusivo)
 
@@ -226,12 +241,8 @@ class PlacaController:
 
                 out.append({
                     "placa": r.plate_text,
-                    "score": r.confidence,
-                    "data_hora": r.created_at.strftime("%d/%m/%Y %H:%M:%S"),
-                    # Se quiser renderizar imagens na página, descomente:
-                    # "source_image": r.source_image,
-                    # "plate_crop_image": r.plate_crop_image,
-                    # "annotated_image": r.annotated_image,
+                    "data": r.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                    "imagem": img_b64,
                 })
             return out
         except Exception as e:
