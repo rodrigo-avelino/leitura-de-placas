@@ -51,7 +51,7 @@ def registroTable(registros):
         try:
             dt = datetime.strptime(data, "%Y-%m-%d %H:%M:%S")
             hora_fmt = dt.strftime("%H:%M")
-            data_fmt = dt.strftime("%d.%m.%y")
+            data_fmt = dt.strftime("%d/%m/%y")
         except Exception:
             hora_fmt = ""
             data_fmt = data
