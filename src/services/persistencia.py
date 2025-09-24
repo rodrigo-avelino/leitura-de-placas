@@ -6,7 +6,7 @@ from src.models.acessoModel import TabelaAcesso
 
 class Persistencia:
     @staticmethod
-    def salvar(placa, score, img_source, img_crop, img_annot):
+    def salvar(placa, score, img_source, img_crop, img_annot, data_captura = None):
         if not placa:
             print("[WARN] Placa inválida, não será salva.")
             return
@@ -25,7 +25,7 @@ class Persistencia:
                 source_image=buf_source.tobytes(),
                 plate_crop_image=buf_crop.tobytes(),
                 annotated_image=buf_annot.tobytes(),
-                created_at=datetime.utcnow()
+                created_at=data_captura or datetime.utcnow()
             )
 
             db.add(novo_registro)

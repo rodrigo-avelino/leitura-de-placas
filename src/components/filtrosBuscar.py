@@ -1,7 +1,7 @@
 import streamlit as st
 
 def filtros_busca():
-    st.subheader("🔎 Filtros de Busca")
+    st.subheader("Filtros de Busca")
     filtro_placa = st.text_input("Buscar por placa")
     col1, col2 = st.columns(2)
     with col1:
