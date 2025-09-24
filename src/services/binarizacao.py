@@ -51,43 +51,31 @@ class Binarizacao:
 
     @staticmethod
     def executar(imagem_bgr, debug=False):
-        # O resto do arquivo (geração de candidatos) permanece o mesmo.
+        # A lógica interna para pré-processamento, geração e avaliação de candidatos permanece a mesma
         gray = cv2.cvtColor(imagem_bgr, cv2.COLOR_BGR2GRAY)
-        
         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
         gray_enhanced = clahe.apply(gray)
         gray_enhanced = cv2.bilateralFilter(gray_enhanced, d=5, sigmaColor=75, sigmaSpace=75)
         hsv = cv2.cvtColor(imagem_bgr, cv2.COLOR_BGR2HSV)
-        
         candidatos_dict = {}
-        
         kernel_bh = cv2.getStructuringElement(cv2.MORPH_RECT, (13, 5))
         blackhat = cv2.morphologyEx(gray_enhanced, cv2.MORPH_BLACKHAT, kernel_bh)
         _, cand_blackhat = cv2.threshold(blackhat, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         candidatos_dict['blackhat_otsu'] = cand_blackhat
-        
         kernel_th = cv2.getStructuringElement(cv2.MORPH_RECT, (13, 5))
         tophat = cv2.morphologyEx(gray_enhanced, cv2.MORPH_TOPHAT, kernel_th)
         _, cand_tophat = cv2.threshold(tophat, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         candidatos_dict['tophat_otsu'] = cand_tophat
-        
         lower_black = np.array([0, 0, 0])
         upper_black = np.array([180, 255, 100])
         hsv_dark_mask = cv2.inRange(hsv, lower_black, upper_black)
         candidatos_dict['hsv_dark'] = hsv_dark_mask
-        
         lower_white = np.array([0, 0, 160])
         upper_white = np.array([180, 70, 255])
         candidatos_dict['hsv_light'] = cv2.inRange(hsv, lower_white, upper_white)
-
-        adaptive_binary = cv2.adaptiveThreshold(
-            gray_enhanced, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
-            cv2.THRESH_BINARY, 21, 10
-        )
+        adaptive_binary = cv2.adaptiveThreshold(gray_enhanced, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 21, 10)
         candidatos_dict['adaptive_inv'] = cv2.bitwise_not(adaptive_binary)
-        
         candidatos_dict['hsv_dark_inverso'] = cv2.bitwise_not(hsv_dark_mask)
-
         _, otsu_binary = cv2.threshold(gray_enhanced, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         candidatos_dict['otsu_inv'] = cv2.bitwise_not(otsu_binary)
 
@@ -95,34 +83,20 @@ class Binarizacao:
         for nome, img_bin in candidatos_dict.items():
             score = Binarizacao._avaliar_qualidade(img_bin)
             candidatos_avaliados.append({"nome": nome, "score": score, "imagem": img_bin})
-        
+
         candidatos_avaliados.sort(key=lambda x: x["score"], reverse=True)
-        
         melhor_candidato = candidatos_avaliados[0]
-        
-        print(f"\n\n=========== RESULTADO FINAL ===========")
-        print(f"Técnica escolhida: '{melhor_candidato['nome']}' com score {melhor_candidato['score']:.3f}")
-        
-        if melhor_candidato['score'] < 0.05: # Reduzimos o score mínimo para aceitar
-            print("AVISO: Nenhuma técnica produziu um resultado bom o suficiente.")
-            return {
-                "resultado_final": np.zeros_like(gray),
-                "debug_candidatos": candidatos_avaliados
-            }
+
+        # Se o melhor candidato tiver score baixo, retorna imagem preta.
+        if melhor_candidato['score'] < 0.1:
+            return np.zeros_like(gray)
 
         melhor_tecnica = melhor_candidato["imagem"]
-        
+
+        # Limpeza final
         kernel_final = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
         resultado_final = cv2.morphologyEx(melhor_tecnica, cv2.MORPH_OPEN, kernel_final, iterations=1)
-        resultado_final = cv2.morphologyEx(resultado_final, cv2.MORPH_CLOSE, kernel_final, iterations=2)
+        resultado_final = cv2.morphologyEx(resultado_final, cv2.MORPH_CLOSE, kernel_final, iterations=1)
 
-        if debug:
-            plt.imshow(resultado_final, cmap='gray')
-            plt.title(f'Melhor Resultado ({melhor_candidato["nome"]})')
-            plt.axis('off')
-            plt.show()
-
-        return {
-            "resultado_final": resultado_final,
-            "debug_candidatos": candidatos_avaliados
-        }
+        # A função agora retorna APENAS a imagem final
+        return resultado_final

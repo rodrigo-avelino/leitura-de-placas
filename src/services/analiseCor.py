@@ -14,7 +14,7 @@ class AnaliseCor:
             if h == 0 or w == 0: return 0.0
 
             # Converte para o espaço de cores HSV
-            hsv = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2HSV)
+            hsv = cv2.cvtColor(crop_bgr, cv2.COLOR_RGB2HSV)
 
             # Define a faixa de cor para o azul da placa Mercosul
             lower_blue = np.array([95, 80, 50])

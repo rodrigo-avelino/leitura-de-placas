@@ -67,7 +67,7 @@ def registros_table(registros):
         # área expandida com o crop (abaixo da linha)
         if st.session_state[f"open_{i}"]:
             if img:
-                st.image(img, caption=f"Crop da placa {placa}", use_container_width=True)
+                st.image(img, caption=f"Crop da placa {placa}", width='stretch')
             else:
                 st.info("Nenhuma imagem disponível para este registro.")
 

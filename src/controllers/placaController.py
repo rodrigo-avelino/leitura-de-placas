@@ -116,13 +116,12 @@ class PlacaController:
     @staticmethod
     def processarImagem(source_image: Any, data_capturada: datetime, on_update=None):
         panel = {}
-
         def _emit(delta: dict):
             panel.update(delta)
             if on_update is not None:
                 on_update(delta)
 
-        # 1-5) Etapas iniciais
+        # ... (Etapas 1-5 permanecem as mesmas) ...
         img_bgr = _read_image_bgr(source_image)
         original = img_bgr.copy()
         _emit({"original": original})
@@ -138,21 +137,21 @@ class PlacaController:
         best = candidatos[0]
         plate_bbox_overlay = _overlay_quad(original, best.get("quad"))
         _emit({"plate_bbox_overlay": plate_bbox_overlay})
-
-        # --- NOVA ETAPA: Análise de Cor ---
-        from src.services.analiseCor import AnaliseCor # Importa o novo serviço
-        crop_rgb = Recorte.executar(img_bgr, best.get("quad"))
+        from src.services.analiseCor import AnaliseCor
+        crop_bgr = Recorte.executar(img_bgr, best.get("quad"))
+        # Convertemos imediatamente para RGB para padronizar
+        crop_rgb = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2RGB)
+        # Passamos a imagem RGB para as próximas etapas
         percent_azul = AnaliseCor.executar(crop_rgb)
         _emit({"plate_crop": crop_rgb})
 
-        # 6-7) Binarização e Segmentação
-        bin_result = Binarizacao.executar(crop_rgb)
-        bin_img = bin_result['resultado_final'] 
-        _emit({"binarizacao": bin_result})
+        # 6) Binarização (agora retorna uma imagem simples)
+        bin_img = Binarizacao.executar(crop_rgb)
+        _emit({"binarizacao": bin_img}) # Emitimos a imagem diretamente
+
+        # ... (O resto do pipeline continua o mesmo) ...
         chars = Segmentacao.executar(bin_img)
         _emit({"chars": chars})
-
-        # 8-10) OCR e Dupla Checagem de Validação
         texto_chars = OCR.executarCaracteres(chars)
         texto_raw = OCR.executarImg(bin_img)
         ocr_text_display = f"Segmentado: '{texto_chars}' | Imagem Inteira: '{texto_raw}'"
@@ -168,43 +167,20 @@ class PlacaController:
             texto_final = Validacao.executar(montagem_raw)
             montagem_final = montagem_raw
         _emit({"plate_text": montagem_final})
-
-        # --- LÓGICA DE CLASSIFICAÇÃO APRIMORADA ---
-        # 11) Validação Final
         padrao_placa = "INDEFINIDO"
         if texto_final:
-            # Se tiver mais de 5% de azul, é Mercosul com alta certeza.
-            if percent_azul > 0.05:
-                padrao_placa = "MERCOSUL"
-            # Senão, usa a regra do 5º caractere como antes.
-            elif len(texto_final) > 4 and texto_final[4].isalpha():
-                padrao_placa = "MERCOSUL"
-            else:
-                padrao_placa = "ANTIGA"
-
-        validation = { 
-            "válida": bool(texto_final), 
-            "entrada": montagem_final, 
-            "saída": texto_final or "", 
-            "padrão": padrao_placa
-        }
+            if percent_azul > 0.05: padrao_placa = "MERCOSUL"
+            elif len(texto_final) > 4 and texto_final[4].isalpha(): padrao_placa = "MERCOSUL"
+            else: padrao_placa = "ANTIGA"
+        validation = { "válida": bool(texto_final), "entrada": montagem_final, "saída": texto_final or "", "padrão": padrao_placa }
         _emit({"validation": validation})
-
-        # 12) Persistência
         status = "ok" if texto_final else "invalido"
         if texto_final:
             img_annot = plate_bbox_overlay if plate_bbox_overlay is not None else original
-            Persistencia.salvar(
-                texto_final,
-                score=1.0,
-                img_source=original,
-                img_crop=crop_rgb,
-                img_annot=img_annot,
-                data_captura=data_capturada,
-            )
+            Persistencia.salvar(texto_final, 1.0, original, crop_rgb, img_annot, data_capturada)
 
+        # ATENÇÃO: a chave "binarizacao" aqui agora contém a imagem, não o dicionário
         return { "status": status, "texto_final": texto_final, "panel": panel, "etapas": { "original": original, "preprocessamento": preproc, "bordas": edges, "contornos": contours, "candidatos": candidatos, "recorte": crop_rgb, "binarizacao": bin_img, "segmentacao": chars, "ocr_raw": texto_raw, "ocr_chars": texto_chars, "montagem": montagem_final, "validacao": texto_final } }
-
     @staticmethod
     def consultarRegistros(arg=None, data_inicio: datetime = None, data_fim: datetime = None):
         """

@@ -8,11 +8,17 @@ def cropImage(img: Any, caption: str | None = None, channels: str | None = None,
     if img is None:
         st.markdown('<div class="crop-label">Nenhum resultado nesta etapa.</div>', unsafe_allow_html=True)
         return
+
     if isinstance(img, np.ndarray) and img.size == 0:
         st.markdown('<div class="crop-label">Nenhum resultado nesta etapa.</div>', unsafe_allow_html=True)
         return
-    st.image(img, caption=caption, channels=channels, width=400, clamp=clamp)
 
+    # Lógica corrigida: só passa o parâmetro 'channels' se ele não for nulo.
+    if channels:
+        st.image(img, caption=caption, channels=channels, width=400, clamp=clamp)
+    else:
+        st.image(img, caption=caption, width=400, clamp=clamp)
+        
 def cropGrid(images: Any, titles: Sequence[str] | None = None, channels: str | None = None) -> None:
     if images is None:
         st.markdown('<div class="crop-label">Nenhum candidato encontrado.</div>', unsafe_allow_html=True)
@@ -90,7 +96,7 @@ MAIN_STEPS: List[Dict[str, Any]] = [
     {"title":"Pré-processamento", "sub":"Conversão para cinza e suavização.", "keys":["preproc","preprocessamento","gauss"], "kind":"image", "channels":"GRAY"},
     {"title":"Bordas e Contornos", "sub":"Regiões candidatas destacadas.", "keys":["contours_overlay","edges_overlay","bordas"], "kind":"image", "channels":"BGR"},
     {"title":"Detecção da Placa", "sub":"Placa localizada na imagem.", "keys":["plate_bbox_overlay"], "kind":"image", "channels":"BGR"},
-    {"title":"Recorte da Placa", "sub":"Crop da região estimada.", "keys":["plate_crop","recorte"], "kind":"image", "channels":"BGR"},
+    {"title":"Recorte da Placa", "sub":"Crop da região estimada.", "keys":["plate_crop","recorte"], "kind":"image"},
     {"title":"Binarização", "sub":"Separação foreground/background para OCR.", "keys":["plate_binary","binarizacao"], "kind":"image", "channels":"GRAY"},
     {"title":"Caracteres Segmentados", "sub":"Candidatos identificados (ordem de leitura).", "keys":["chars","segmentacao"], "kind":"grid", "channels":"GRAY"},
     {"title":"OCR", "sub":"Leitura dos caracteres.", "keys":["ocr_text"], "kind":"text"},
@@ -108,17 +114,8 @@ def _pick_value(result: dict, keys: List[str]):
     for k in keys:
         if k in result:
             v = result[k]
-            # --- MODIFICAÇÃO IMPORTANTE ---
-            # Se a chave for 'binarizacao', pegamos o resultado final do dicionário
-            if k == 'binarizacao' and isinstance(v, dict):
-                return v.get('resultado_final')
-            if not _is_empty(v): return v
-    
-    # Fallback para o caso de 'binarizacao'
-    v = result.get('binarizacao')
-    if isinstance(v, dict):
-        return v.get('resultado_final')
-        
+            if not _is_empty(v):
+                return v
     return result.get(keys[0])
 
 def _render(kind: str, value: Any, channels=None):
@@ -148,14 +145,6 @@ def panelPDI(result: dict, show_tech: bool | None = None, key: str = "pdi"):
             _render(step["kind"], value, channels=step.get("channels"))
             st.markdown('</div>', unsafe_allow_html=True)
 
-    # --- NOVO PAINEL DE DEPURAÇÃO DE BINARIZAÇÃO ---
-    bin_debug_info = result.get("binarizacao", {}).get("debug_candidatos") if isinstance(result.get("binarizacao"), dict) else None
-    if bin_debug_info:
-        with st.expander("🕵️ Debug Binarização"):
-            st.markdown('<div class="step-title">Análise dos Candidatos de Binarização</div>', unsafe_allow_html=True)
-            st.markdown('<div class="step-sub">Resultado de cada técnica e sua respectiva nota (score).</div>', unsafe_allow_html=True)
-            for cand in bin_debug_info:
-                st.markdown(f"--- \n **Técnica:** `{cand['nome']}` | **Score:** `{cand['score']:.3f}`")
-                st.image(cand['imagem'], channels="GRAY", width=400)
+
 
     st.markdown('</div>', unsafe_allow_html=True)
