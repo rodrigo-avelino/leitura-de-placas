@@ -112,6 +112,7 @@ def _read_image_bgr(source: Any) -> np.ndarray:
 
 class PlacaController:
 
+   # Dentro da classe PlacaController
     @staticmethod
     def processarImagem(source_image: Any, data_capturada: datetime, on_update=None):
         panel = {}
@@ -121,61 +122,75 @@ class PlacaController:
             if on_update is not None:
                 on_update(delta)
 
-        # 1) Ler a imagem BGR
+        # 1-5) Etapas iniciais
         img_bgr = _read_image_bgr(source_image)
         original = img_bgr.copy()
         _emit({"original": original})
-
-        # 2) Pré-processamento
         preproc = Preprocessamento.executar(img_bgr)
         _emit({"preproc": preproc})
-
-        # 3) Bordas + Contornos
         edges = Bordas.executar(preproc)
         contours = Contornos.executar(edges)
         contours_overlay = _overlay_contours(original, contours)
         _emit({"contours_overlay": contours_overlay})
-
-        # 4) Filtrar candidatos
         candidatos = FiltrarContornos.executar(contours, img_bgr)
         if not candidatos:
             return { "status": "erro", "texto_final": None, "panel": panel, "etapas": { "original": original, "preprocessamento": preproc, "bordas": edges, "contornos": contours, "candidatos": [] } }
-
         best = candidatos[0]
         plate_bbox_overlay = _overlay_quad(original, best.get("quad"))
         _emit({"plate_bbox_overlay": plate_bbox_overlay})
 
-        # 5) Recorte
+        # --- NOVA ETAPA: Análise de Cor ---
+        from src.services.analiseCor import AnaliseCor # Importa o novo serviço
         crop_rgb = Recorte.executar(img_bgr, best.get("quad"))
+        percent_azul = AnaliseCor.executar(crop_rgb)
         _emit({"plate_crop": crop_rgb})
-        
-        # 6) Binarização (que agora retorna um dicionário)
-        bin_result = Binarizacao.executar(crop_rgb)
-        # Extrai a imagem final para usar nas próximas etapas
-        bin_img = bin_result['resultado_final'] 
-        # Envia o dicionário COMPLETO (com debug) para o painel com o nome correto
-        _emit({"binarizacao": bin_result})
 
-        # 7) Segmentação (usa a imagem final extraída)
+        # 6-7) Binarização e Segmentação
+        bin_result = Binarizacao.executar(crop_rgb)
+        bin_img = bin_result['resultado_final'] 
+        _emit({"binarizacao": bin_result})
         chars = Segmentacao.executar(bin_img)
         _emit({"chars": chars})
 
-        # 8) OCR
-        texto_raw = OCR.executarImg(crop_rgb)
+        # 8-10) OCR e Dupla Checagem de Validação
         texto_chars = OCR.executarCaracteres(chars)
-        ocr_text = (texto_raw or texto_chars or "").upper().strip()
-        _emit({"ocr_text": ocr_text})
+        texto_raw = OCR.executarImg(bin_img)
+        ocr_text_display = f"Segmentado: '{texto_chars}' | Imagem Inteira: '{texto_raw}'"
+        _emit({"ocr_text": ocr_text_display})
+        texto_final = None
+        montagem_final = ""
+        if texto_chars:
+            montagem_chars = Montagem.executar(texto_chars)
+            texto_final = Validacao.executar(montagem_chars)
+            montagem_final = montagem_chars
+        if not texto_final and texto_raw:
+            montagem_raw = Montagem.executar(texto_raw)
+            texto_final = Validacao.executar(montagem_raw)
+            montagem_final = montagem_raw
+        _emit({"plate_text": montagem_final})
 
-        # 9) Montagem
-        plate_text = Montagem.executar(ocr_text)
-        _emit({"plate_text": plate_text})
+        # --- LÓGICA DE CLASSIFICAÇÃO APRIMORADA ---
+        # 11) Validação Final
+        padrao_placa = "INDEFINIDO"
+        if texto_final:
+            # Se tiver mais de 5% de azul, é Mercosul com alta certeza.
+            if percent_azul > 0.05:
+                padrao_placa = "MERCOSUL"
+            # Senão, usa a regra do 5º caractere como antes.
+            elif len(texto_final) > 4 and texto_final[4].isalpha():
+                padrao_placa = "MERCOSUL"
+            else:
+                padrao_placa = "ANTIGA"
 
-        # 10) Validação
-        texto_final = Validacao.executar(plate_text)
-        validation = { "válida": bool(texto_final), "entrada": plate_text, "saída": texto_final or "", "padrão": ("MERCOSUL" if texto_final and len(texto_final) > 4 and texto_final[4].isalpha() else "ANTIGA") if texto_final else "—" }
+        validation = { 
+            "válida": bool(texto_final), 
+            "entrada": montagem_final, 
+            "saída": texto_final or "", 
+            "padrão": padrao_placa
+        }
         _emit({"validation": validation})
 
-        # 11) Persistência (se válido)
+        # 12) Persistência
         status = "ok" if texto_final else "invalido"
         if texto_final:
             img_annot = plate_bbox_overlay if plate_bbox_overlay is not None else original
@@ -188,7 +203,7 @@ class PlacaController:
                 data_captura=data_capturada,
             )
 
-        return { "status": status, "texto_final": texto_final, "panel": panel, "etapas": { "original": original, "preprocessamento": preproc, "bordas": edges, "contornos": contours, "candidatos": candidatos, "recorte": crop_rgb, "binarizacao": bin_img, "segmentacao": chars, "ocr_raw": texto_raw, "ocr_chars": texto_chars, "montagem": plate_text, "validacao": texto_final } }
+        return { "status": status, "texto_final": texto_final, "panel": panel, "etapas": { "original": original, "preprocessamento": preproc, "bordas": edges, "contornos": contours, "candidatos": candidatos, "recorte": crop_rgb, "binarizacao": bin_img, "segmentacao": chars, "ocr_raw": texto_raw, "ocr_chars": texto_chars, "montagem": montagem_final, "validacao": texto_final } }
 
     @staticmethod
     def consultarRegistros(arg=None, data_inicio: datetime = None, data_fim: datetime = None):
