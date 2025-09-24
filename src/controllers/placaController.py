@@ -1,10 +1,10 @@
 import cv2
-import numpy as np
-from io import BytesIO, BufferedReader  # da branch kainangay
-from pathlib import Path
-from datetime import datetime, timedelta  # da branch main (precisa do timedelta)
-from typing import Any
 import base64
+import numpy as np
+from typing import Any
+from pathlib import Path
+from io import BytesIO, BufferedReader
+from datetime import datetime, timedelta
 
 from src.services.preprocessamento import Preprocessamento
 from src.services.binarizacao import Binarizacao
@@ -20,7 +20,6 @@ from src.services.persistencia import Persistencia
 
 from src.models.acessoModel import TabelaAcesso
 from src.config.db import SessionLocal
-from datetime import timedelta
 
 # (opcional) mantém diretórios se sua Persistencia salvar arquivos em disco
 BASE_DIR = Path(__file__).resolve().parent.parent
