@@ -1,10 +1,10 @@
-# src/controllers/placaController.py
 import cv2
 import numpy as np
 from io import BytesIO, BufferedReader  # da branch kainangay
 from pathlib import Path
 from datetime import datetime, timedelta  # da branch main (precisa do timedelta)
 from typing import Any
+import base64
 
 from src.services.preprocessamento import Preprocessamento
 from src.services.binarizacao import Binarizacao
@@ -17,6 +17,10 @@ from src.services.ocr import OCR
 from src.services.montagem import Montagem
 from src.services.validacao import Validacao
 from src.services.persistencia import Persistencia
+
+from src.models.acessoModel import TabelaAcesso
+from src.config.db import SessionLocal
+from datetime import timedelta
 
 # (opcional) mantém diretórios se sua Persistencia salvar arquivos em disco
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -196,6 +200,7 @@ class PlacaController:
             placa = arg.get("placa")
             data_inicio = arg.get("data_inicio", data_inicio)
             data_fim = arg.get("data_fim", data_fim)
+            data_fim = arg.get("data_fim", data_fim)
         else:
             placa = arg
 
@@ -214,6 +219,11 @@ class PlacaController:
             registros = query.order_by(TabelaAcesso.created_at.desc()).all()
             out = []
             for r in registros:
+                img_b64 = None
+                if r.plate_crop_image:
+                    # converte binário em base64 para exibição no Streamlit
+                    img_b64 = "data:image/png;base64," + base64.b64encode(r.plate_crop_image).decode("utf-8")
+
                 out.append({
                     "placa": r.plate_text,
                     "score": r.confidence,
