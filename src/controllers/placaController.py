@@ -1,9 +1,9 @@
 # src/controllers/placaController.py
 import cv2
 import numpy as np
-from io import BytesIO, BufferedReader
+from io import BytesIO, BufferedReader  # da branch kainangay
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta  # da branch main (precisa do timedelta)
 from typing import Any
 
 from src.services.preprocessamento import Preprocessamento
@@ -25,7 +25,8 @@ CROP_DIR = BASE_DIR / "static" / "crops"
 for d in [ANNOTATED_DIR, CROP_DIR]:
     d.mkdir(parents=True, exist_ok=True)
 
-def _overlay_contours(bgr, contours, color=(0,255,255), thickness=2):
+
+def _overlay_contours(bgr, contours, color=(0, 255, 255), thickness=2):
     if contours is None:
         return None
     out = bgr.copy()
@@ -35,14 +36,16 @@ def _overlay_contours(bgr, contours, color=(0,255,255), thickness=2):
         pass
     return out
 
-def _overlay_quad(bgr, quad, color=(0,255,0), thickness=2):
+
+def _overlay_quad(bgr, quad, color=(0, 255, 0), thickness=2):
     if quad is None:
         return None
     out = bgr.copy()
     q = np.asarray(quad).astype(int)
-    pts = q.reshape((-1,1,2))
+    pts = q.reshape((-1, 1, 2))
     cv2.polylines(out, [pts], isClosed=True, color=color, thickness=thickness)
     return out
+
 
 def _read_image_bgr(source: Any) -> np.ndarray:
     """
@@ -54,8 +57,6 @@ def _read_image_bgr(source: Any) -> np.ndarray:
         img = source
         # se for RGB, converte pra BGR pra consistência
         if img.ndim == 3 and img.shape[2] == 3:
-            # heurística: não há flag segura, mas se vier como RGB e o pipeline assume BGR, converta
-            # (se já estiver em BGR, a diferença visual não afeta a detecção; melhor padronizar)
             img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         return img
 
@@ -99,12 +100,15 @@ def _read_image_bgr(source: Any) -> np.ndarray:
         p = Path(source)
         if not p.exists():
             raise FileNotFoundError(f"Imagem {p} não encontrada")
-        img = cv2.imread(str(p), cv2.IMREAD_COLOR)
+        # leitura robusta para caminhos com acentos/onedrive
+        data = np.fromfile(str(p), dtype=np.uint8)
+        img = cv2.imdecode(data, cv2.IMREAD_COLOR)
         if img is None:
             raise ValueError(f"Falha ao ler a imagem em {p}")
         return img
 
     raise TypeError("Tipo de fonte de imagem não suportado para _read_image_bgr().")
+
 
 class PlacaController:
 
@@ -117,7 +121,7 @@ class PlacaController:
             if on_update is not None:
                 on_update(delta)
 
-        # 1) Ler a imagem BGR
+        # 1) Ler a imagem BGR (versão robusta)
         img_bgr = _read_image_bgr(source_image)
         original = img_bgr.copy()
 
@@ -138,7 +142,13 @@ class PlacaController:
                 "status": "erro",
                 "texto_final": None,
                 "panel": panel,
-                "etapas": {"original": original, "preprocessamento": preproc, "bordas": edges, "contornos": contours, "candidatos": []},
+                "etapas": {
+                    "original": original,
+                    "preprocessamento": preproc,
+                    "bordas": edges,
+                    "contornos": contours,
+                    "candidatos": []
+                },
             }
 
         best = candidatos[0]
@@ -173,11 +183,11 @@ class PlacaController:
             "válida": bool(texto_final),
             "entrada": plate_text,
             "saída": texto_final or "",
-            "padrão": ("MERCOSUL" if texto_final and texto_final[4].isalpha() else "ANTIGA") if texto_final else "—"
+            "padrão": ("MERCOSUL" if texto_final and len(texto_final) > 4 and texto_final[4].isalpha() else "ANTIGA") if texto_final else "—"
         }
         _emit({"validation": validation})
 
-        # 11) Persistência (se válido) — sem 'or' em arrays
+        # 11) Persistência (se válido)
         status = "ok" if texto_final else "invalido"
         persist_info = {}
         if texto_final:
@@ -188,7 +198,7 @@ class PlacaController:
                 img_source=original,
                 img_crop=crop_rgb,
                 img_annot=img_annot,
-                data_captura=data_capturada, 
+                data_captura=data_capturada,
             )
             persist_info = {"salvo": True, "placa": texto_final, "ts": data_capturada.isoformat()}
             _emit({"persist": persist_info})
@@ -217,6 +227,11 @@ class PlacaController:
 
     @staticmethod
     def consultarRegistros(arg=None, data_inicio: datetime = None, data_fim: datetime = None):
+        """
+        Consulta registros no banco com filtros opcionais.
+        - arg: pode ser dict com {placa, data_inicio, data_fim} ou str com a placa
+        - data_fim é inclusiva (ajustado com timedelta)
+        """
         from src.config.db import SessionLocal
         from src.models.acessoModel import TabelaAcesso
 
@@ -224,7 +239,7 @@ class PlacaController:
         if isinstance(arg, dict):
             placa = arg.get("placa")
             data_inicio = arg.get("data_inicio", data_inicio)
-            data_fim    = arg.get("data_fim", data_fim)
+            data_fim = arg.get("data_fim", data_fim)
         else:
             placa = arg
 
@@ -236,7 +251,9 @@ class PlacaController:
             if data_inicio:
                 query = query.filter(TabelaAcesso.created_at >= data_inicio)
             if data_fim:
-                query = query.filter(TabelaAcesso.created_at <= data_fim)
+                # tornar inclusivo: [data_inicio, data_fim 23:59:59]
+                data_fim_exclusivo = data_fim + timedelta(days=1)
+                query = query.filter(TabelaAcesso.created_at < data_fim_exclusivo)
 
             registros = query.order_by(TabelaAcesso.created_at.desc()).all()
             out = []
@@ -244,10 +261,11 @@ class PlacaController:
                 out.append({
                     "placa": r.plate_text,
                     "score": r.confidence,
-                    "caminho_origem": r.source_path,
-                    "caminho_crop": r.plate_crop_path,
-                    "caminho_annotated": r.annotated_path,
                     "data_hora": r.created_at.strftime("%d/%m/%Y %H:%M:%S"),
+                    # Se quiser renderizar imagens na página, descomente:
+                    # "source_image": r.source_image,
+                    # "plate_crop_image": r.plate_crop_image,
+                    # "annotated_image": r.annotated_image,
                 })
             return out
         except Exception as e:
