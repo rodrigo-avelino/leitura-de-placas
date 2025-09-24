@@ -113,8 +113,8 @@ class Binarizacao:
         melhor_tecnica = melhor_candidato["imagem"]
         
         kernel_final = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-        resultado_final = cv2.morphologyEx(melhor_tecnica, cv2.MORPH_OPEN, kernel_final, iterations=2)
-        resultado_final = cv2.morphologyEx(resultado_final, cv2.MORPH_CLOSE, kernel_final, iterations=1)
+        resultado_final = cv2.morphologyEx(melhor_tecnica, cv2.MORPH_OPEN, kernel_final, iterations=1)
+        resultado_final = cv2.morphologyEx(resultado_final, cv2.MORPH_CLOSE, kernel_final, iterations=2)
 
         if debug:
             plt.imshow(resultado_final, cmap='gray')

@@ -146,7 +146,50 @@ class FiltrarContornos:
             return cv2.cvtColor(warped, cv2.COLOR_BGR2RGB)
         except:
             return np.zeros((target_h, target_w, 3), dtype=np.uint8)
+    # Cole esta nova função dentro da classe FiltrarContornos
+# Cole esta nova função no lugar da antiga _encolher_quad
+    @staticmethod
+    def _encolher_quad(quad, fator_encolhimento=0.03, max_shrink_ratio=0.15):
+        """
+        Encolhe um quadrilátero com uma trava de segurança para não cortar demais.
+        - fator_encolhimento: a porcentagem desejada para encolher.
+        - max_shrink_ratio: a distância máxima que um ponto pode se mover,
+                            em proporção à altura da placa.
+        """
+        if quad is None:
+            return None
 
+        # Calcula a altura média da placa para definir o limite de segurança
+        (tl, tr, br, bl) = quad
+        height_left = np.linalg.norm(bl - tl)
+        height_right = np.linalg.norm(br - tr)
+        avg_height = (height_left + height_right) / 2.0
+
+        # O limite máximo de movimento é 15% da altura da placa
+        limite_movimento_px = avg_height * max_shrink_ratio
+
+        centroide = quad.mean(axis=0)
+        quad_encolhido = np.zeros_like(quad)
+
+        for i in range(4):
+            vetor = quad[i] - centroide
+
+            # Posição proposta com o fator de encolhimento desejado
+            ponto_proposto = quad[i] - (vetor * fator_encolhimento)
+
+            # Calcula a distância que o ponto se moveria
+            distancia_movimento = np.linalg.norm(ponto_proposto - quad[i])
+
+            # Se a distância for maior que o limite, usa o limite.
+            if distancia_movimento > limite_movimento_px:
+                # Move o ponto na direção do centro, mas apenas pela distância limite
+                vetor_unitario = vetor / np.linalg.norm(vetor)
+                quad_encolhido[i] = quad[i] - (vetor_unitario * limite_movimento_px)
+            else:
+                # Se for seguro, usa a posição proposta
+                quad_encolhido[i] = ponto_proposto
+
+        return quad_encolhido.astype(np.float32)
     @staticmethod
     def executar(contornos, imagem_bgr):
         H, W = imagem_bgr.shape[:2]
@@ -274,6 +317,16 @@ class FiltrarContornos:
         print(f"[DEBUG] {len(candidatos)} candidatos finais")
         
         candidatos.sort(key=lambda c: c["score"], reverse=True)
+
+         # --- NOVA ETAPA DE REFINAMENTO ---
+    # Se encontramos algum candidato, refinamos o melhor deles.
+        if candidatos:
+            melhor_candidato = candidatos[0]
+            quad_original = melhor_candidato.get("quad")
+            # Chamamos a nova função para encolher o quadrilátero
+            quad_refinado = FiltrarContornos._encolher_quad(quad_original, fator_encolhimento=0.25)
+            # Atualizamos o dicionário do candidato com o novo quadrilátero refinado
+            melhor_candidato["quad"] = quad_refinado
         
         for i, cand in enumerate(candidatos[:3]):
             print(f"[DEBUG] Candidato {i+1}: {cand['pattern']} | Score: {cand['score']:.3f} | "
