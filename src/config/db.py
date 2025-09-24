@@ -26,5 +26,5 @@ Base = declarative_base()
 #cria a tabela
 def criarTabela():
     #importe ta dentro da funcao para evitar erro circular
-    from models.acessoModel import TabelaAcesso
+    from src.models.acessoModel import TabelaAcesso
     Base.metadata.create_all(bind=engine)

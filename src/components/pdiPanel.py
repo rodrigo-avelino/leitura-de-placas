@@ -1,3 +1,4 @@
+import cv2   
 import numpy as np
 import streamlit as st
 from typing import Any, Dict, List, Sequence
@@ -11,7 +12,7 @@ def cropImage(img: Any, caption: str | None = None, channels: str | None = None,
         st.markdown('<div class="crop-label">Nenhum resultado nesta etapa.</div>', unsafe_allow_html=True)
         return
 
-    st.image(img, caption=caption, channels=channels, use_container_width=True, clamp=clamp)
+    st.image(img, caption=caption, channels=channels, width=400, clamp=clamp)
 
 def cropGrid(images: Any, titles: Sequence[str] | None = None, channels: str | None = None) -> None:
     if images is None:
@@ -42,11 +43,14 @@ def cropGrid(images: Any, titles: Sequence[str] | None = None, channels: str | N
     cols = st.columns(ncols)
     for i, im in enumerate(cleaned):
         with cols[i % ncols]:
+            # Redimensiona a imagem manualmente com interpolação "Nearest Neighbor"
+            # para manter os pixels nítidos e evitar o efeito borrado.
+            resized_im = cv2.resize(im, (96, 192), interpolation=cv2.INTER_NEAREST)
+
             st.image(
-                im,
+                resized_im, # Exibe a imagem já redimensionada
                 caption=(titles[i] if titles and i < len(titles) else None),
                 channels=channels,
-                use_container_width=True,
             )
 
 PDI_CSS = """
