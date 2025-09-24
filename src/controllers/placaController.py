@@ -121,9 +121,10 @@ class PlacaController:
             if on_update is not None:
                 on_update(delta)
 
-        # 1) Ler a imagem BGR (versão robusta)
+        # 1) Ler a imagem BGR
         img_bgr = _read_image_bgr(source_image)
         original = img_bgr.copy()
+        _emit({"original": original})
 
         # 2) Pré-processamento
         preproc = Preprocessamento.executar(img_bgr)
@@ -138,18 +139,7 @@ class PlacaController:
         # 4) Filtrar candidatos
         candidatos = FiltrarContornos.executar(contours, img_bgr)
         if not candidatos:
-            return {
-                "status": "erro",
-                "texto_final": None,
-                "panel": panel,
-                "etapas": {
-                    "original": original,
-                    "preprocessamento": preproc,
-                    "bordas": edges,
-                    "contornos": contours,
-                    "candidatos": []
-                },
-            }
+            return { "status": "erro", "texto_final": None, "panel": panel, "etapas": { "original": original, "preprocessamento": preproc, "bordas": edges, "contornos": contours, "candidatos": [] } }
 
         best = candidatos[0]
         plate_bbox_overlay = _overlay_quad(original, best.get("quad"))
@@ -158,12 +148,15 @@ class PlacaController:
         # 5) Recorte
         crop_rgb = Recorte.executar(img_bgr, best.get("quad"))
         _emit({"plate_crop": crop_rgb})
+        
+        # 6) Binarização (que agora retorna um dicionário)
+        bin_result = Binarizacao.executar(crop_rgb)
+        # Extrai a imagem final para usar nas próximas etapas
+        bin_img = bin_result['resultado_final'] 
+        # Envia o dicionário COMPLETO (com debug) para o painel com o nome correto
+        _emit({"binarizacao": bin_result})
 
-        # 6) Binarização
-        bin_img = Binarizacao.executar(crop_rgb)
-        _emit({"plate_binary": bin_img})
-
-        # 7) Segmentação
+        # 7) Segmentação (usa a imagem final extraída)
         chars = Segmentacao.executar(bin_img)
         _emit({"chars": chars})
 
@@ -179,17 +172,11 @@ class PlacaController:
 
         # 10) Validação
         texto_final = Validacao.executar(plate_text)
-        validation = {
-            "válida": bool(texto_final),
-            "entrada": plate_text,
-            "saída": texto_final or "",
-            "padrão": ("MERCOSUL" if texto_final and len(texto_final) > 4 and texto_final[4].isalpha() else "ANTIGA") if texto_final else "—"
-        }
+        validation = { "válida": bool(texto_final), "entrada": plate_text, "saída": texto_final or "", "padrão": ("MERCOSUL" if texto_final and len(texto_final) > 4 and texto_final[4].isalpha() else "ANTIGA") if texto_final else "—" }
         _emit({"validation": validation})
 
         # 11) Persistência (se válido)
         status = "ok" if texto_final else "invalido"
-        persist_info = {}
         if texto_final:
             img_annot = plate_bbox_overlay if plate_bbox_overlay is not None else original
             Persistencia.salvar(
@@ -200,30 +187,8 @@ class PlacaController:
                 img_annot=img_annot,
                 data_captura=data_capturada,
             )
-            persist_info = {"salvo": True, "placa": texto_final, "ts": data_capturada.isoformat()}
-            _emit({"persist": persist_info})
-        else:
-            persist_info = {"salvo": False, "placa": "", "motivo": "validação falhou"}
 
-        return {
-            "status": status,
-            "texto_final": texto_final,
-            "panel": panel,
-            "etapas": {
-                "original": original,
-                "preprocessamento": preproc,
-                "bordas": edges,
-                "contornos": contours,
-                "candidatos": candidatos,
-                "recorte": crop_rgb,
-                "binarizacao": bin_img,
-                "segmentacao": chars,
-                "ocr_raw": texto_raw,
-                "ocr_chars": texto_chars,
-                "montagem": plate_text,
-                "validacao": texto_final,
-            },
-        }
+        return { "status": status, "texto_final": texto_final, "panel": panel, "etapas": { "original": original, "preprocessamento": preproc, "bordas": edges, "contornos": contours, "candidatos": candidatos, "recorte": crop_rgb, "binarizacao": bin_img, "segmentacao": chars, "ocr_raw": texto_raw, "ocr_chars": texto_chars, "montagem": plate_text, "validacao": texto_final } }
 
     @staticmethod
     def consultarRegistros(arg=None, data_inicio: datetime = None, data_fim: datetime = None):
