@@ -1,8 +1,6 @@
-import os
 import streamlit as st
 from datetime import datetime
 
-# ---------- COMPONENTE ----------
 def registroTable(registros):
     # Título
     st.markdown(
@@ -47,13 +45,14 @@ def registroTable(registros):
         data  = r["data"]
         img   = r.get("imagem")
 
-        # formata data se vier no formato ISO
+        # tenta converter para datetime no padrão ISO
+        hora_fmt, data_fmt = "", ""
         try:
             dt = datetime.strptime(data, "%Y-%m-%d %H:%M:%S")
-            hora_fmt = dt.strftime("%H:%M")
-            data_fmt = dt.strftime("%d/%m/%y")
+            hora_fmt = dt.strftime("%H:%M")       # 24h brasileiro
+            data_fmt = dt.strftime("%d/%m/%Y")    # dd/mm/yyyy
         except Exception:
-            hora_fmt = ""
+            # fallback: mostra direto
             data_fmt = data
 
         # estado do toggle da linha
@@ -64,15 +63,15 @@ def registroTable(registros):
         with col2: st.markdown(f"<div class='cell-data'>{hora_fmt}</div>", unsafe_allow_html=True)
         with col3: st.markdown(f"<div class='cell-data'>{data_fmt}</div>", unsafe_allow_html=True)
 
-        # botão "Ver" (rótulo fixo)
+        # botão "Ver"
         with col4:
             if st.button("Ver", key=f"toggle_{i}"):
                 st.session_state[f"open_{i}"] = not st.session_state[f"open_{i}"]
 
-        # área expandida com o crop (abaixo da linha)
+        # área expandida com o crop
         if st.session_state[f"open_{i}"]:
             if img:
-                st.image(img, caption=f"Crop da placa {placa}", width='stretch',)
+                st.image(img, caption=f"Crop da placa {placa}", use_container_width=True)
             else:
                 st.info("Nenhuma imagem disponível para este registro.")
 

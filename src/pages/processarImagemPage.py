@@ -1,5 +1,5 @@
 import streamlit as st
-from datetime import datetime
+from datetime import datetime, time, date
 from src.controllers.placaController import PlacaController
 from src.components.pdiPanel import panelPDI
 
@@ -8,13 +8,38 @@ class ProcessarImagemPage:
     def app():
         st.title("Processar Imagem")
 
-        # Data e hora
         st.subheader("Data e Hora da Captura")
+
         c1, c2 = st.columns(2)
+
         with c1:
-            data_captura = st.date_input("Data", value=datetime.today())
+            hoje = datetime.today().date()
+            data_captura = st.date_input(
+                "Data",
+                value=hoje,
+                max_value=hoje,
+                min_value=date(2000, 1, 1),
+                format="DD/MM/YYYY"
+            )
+
         with c2:
-            hora_captura = st.time_input("Hora", value=datetime.now().time())
+            # gerar opções no formato brasileiro (24h, de meia em meia hora)
+            opcoes = []
+            valores = {}
+            for h in range(24):
+                for m in (0, 30):
+                    t = time(h, m)
+                    label = f"{h:02d}:{m:02d}"  # ex: 07:00, 07:30
+                    opcoes.append(label)
+                    valores[label] = t
+
+            # seleciona o horário atual arredondado para a meia hora mais próxima
+            agora = datetime.now()
+            minuto_ajustado = 0 if agora.minute < 30 else 30
+            hora_atual_label = f"{agora.hour:02d}:{minuto_ajustado:02d}"
+
+            hora_str = st.selectbox("Hora", opcoes, index=opcoes.index(hora_atual_label))
+            hora_captura = valores[hora_str]
 
         # Upload
         st.subheader("Upload de Imagens")

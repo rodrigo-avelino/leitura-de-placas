@@ -10,7 +10,12 @@ class consultarRegistroPage:
         # agora buscar() já devolve dict pronto
         filtros = buscar()
 
-        registros = PlacaController.consultarRegistros(filtros)
+        # consulta real no banco
+        registros = PlacaController.consultarRegistros(
+            arg=filtros,
+            data_inicio=filtros.get("data_inicio"),
+            data_fim=filtros.get("data_fim"),
+        )
 
         registroTable(registros)
 
