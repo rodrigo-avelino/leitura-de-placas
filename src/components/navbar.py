@@ -80,7 +80,7 @@ def navbar(active_page: str):
         st.button(
             "Processar Imagem",
             key="nav_processar",
-            use_container_width=True,
+            width='stretch',
             type=("primary" if active_page == "processar" else "secondary"),
             on_click=_go, args=("processar",),
             icon=":material/photo_camera:",  # remova se não quiser ícone
@@ -89,7 +89,7 @@ def navbar(active_page: str):
         st.button(
             "Consultar Registros",
             key="nav_consultar",
-            use_container_width=True,
+            width='stretch',
             type=("primary" if active_page == "consultar" else "secondary"),
             on_click=_go, args=("consultar",),
             icon=":material/search:",

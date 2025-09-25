@@ -16,8 +16,12 @@ class Persistencia:
 
             # converter imagens OpenCV (numpy) em bytes
             _, buf_source = cv2.imencode(".jpg", img_source)
-            _, buf_crop   = cv2.imencode(".jpg", img_crop)
             _, buf_annot  = cv2.imencode(".jpg", img_annot)
+            # --- CORREÇÃO APLICADA AQUI ---
+            # A imagem 'img_crop' está em RGB, então a convertemos de volta para BGR
+            # antes de salvá-la com a função do OpenCV.
+            img_crop_bgr = cv2.cvtColor(img_crop, cv2.COLOR_RGB2BGR)
+            _, buf_crop = cv2.imencode(".jpg", img_crop_bgr)
 
             novo_registro = TabelaAcesso(
                 plate_text=placa,

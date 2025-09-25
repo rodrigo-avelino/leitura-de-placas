@@ -34,7 +34,7 @@ class ProcessarImagemPage:
             panelPDI(st.session_state["pdi_result"])
 
         # Botão
-        if st.button("Processar", type="primary", use_container_width=True):
+        if st.button("Processar", type="primary", width='stretch',):
             if not uploaded_file:
                 st.warning("Envie ao menos 1 imagem para processar.")
                 return
