@@ -208,7 +208,7 @@ class PlacaController:
         """
         Consulta registros no banco com filtros opcionais.
         - arg: pode ser dict com {placa, data_inicio, data_fim} ou str com a placa
-        - data_fim é inclusiva (ajustado com timedelta)
+        - data_fim é inclusiva até 23:59:59 do mesmo dia (sem avançar para o dia seguinte)
         """
         
         placa = None
@@ -222,20 +222,20 @@ class PlacaController:
         db = SessionLocal()
         try:
             query = db.query(TabelaAcesso)
+
             if placa:
                 query = query.filter(TabelaAcesso.plate_text.ilike(f"%{placa}%"))
             if data_inicio:
                 query = query.filter(TabelaAcesso.created_at >= data_inicio)
             if data_fim:
-                data_fim_exclusivo = data_fim + timedelta(days=1)
-                query = query.filter(TabelaAcesso.created_at < data_fim_exclusivo)
+                # Agora usamos <= data_fim porque o buscar() já manda 23:59:59 do dia escolhido
+                query = query.filter(TabelaAcesso.created_at <= data_fim)
 
             registros = query.order_by(TabelaAcesso.created_at.desc()).all()
             out = []
             for r in registros:
                 img_b64 = None
                 if r.plate_crop_image:
-                    # converte binário em base64 para exibição no Streamlit
                     img_b64 = "data:image/png;base64," + base64.b64encode(r.plate_crop_image).decode("utf-8")
 
                 out.append({
