@@ -5,7 +5,7 @@ def _go(page: str):
     st.query_params["page"] = page
     st.session_state.page = page
     # st.rerun()  # <- REMOVIDO para evitar o warning "no-op"
-
+# isso aqui é a barra de navegação
 def navbar(active_page: str):
     st.markdown(
         """

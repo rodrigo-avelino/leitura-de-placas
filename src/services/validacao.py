@@ -1,5 +1,5 @@
 import re
-
+# Classe para validação e correção de placas de veículos com base em padrões brasileiros antigos e do Mercosul usando regex e mapeamentos de caracteres comuns errados na placa
 class Validacao:
     # quando ESPERA NÚMERO, mas veio letra
     mapa_numero = { "O": "0", "Q": "0", "D": "0", "I": "1", "Z": "2", "S": "5", "G": "6", "B": "8", "T": "7", "A": "4" }

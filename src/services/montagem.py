@@ -1,5 +1,5 @@
 import re
-
+# Classe para montagem e validação de placas de veículos a partir de texto bruto extraído por OCR, por exemplo, aplicando regex para identificar padrões válidos de placas e retornando a placa formatada ou uma string vazia se não houver correspondência
 class Montagem:
     @staticmethod
     def executar(texto_raw: str):

@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-
+# aqui vamos segmentar os caracteres da placa na imagem binária, aplicando várias etapas de filtragem e reconstrução de máscara para melhorar a detecção dos caracteres na imagem binária da placa
 class Segmentacao:
     @staticmethod
     def executar(imagem_bin, debug=False):

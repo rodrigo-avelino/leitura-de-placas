@@ -19,6 +19,7 @@ def cropImage(img: Any, caption: str | None = None, channels: str | None = None,
     else:
         st.image(img, caption=caption, width=400, clamp=clamp)
         
+# isso abaixo serve para mostrar varios crops em uma grade, como funciona: ele verifica se a imagem é nula ou uma lista vazia, se for, mostra uma mensagem de erro na tela, se não for, ele cria colunas dinamicamente (até 7 colunas) e redimensiona as imagens para 96x192 pixels antes de exibi-las
 def cropGrid(images: Any, titles: Sequence[str] | None = None, channels: str | None = None) -> None:
     if images is None:
         st.markdown('<div class="crop-label">Nenhum candidato encontrado.</div>', unsafe_allow_html=True)
@@ -92,6 +93,7 @@ PDI_CSS = """
 """
 
 # ... (A variável MAIN_STEPS e as funções _is_empty, _pick_value, _render permanecem as mesmas) ...
+#abaixo ele define as etapas principais do processamento de imagens, cada etapa tem um título, uma descrição, chaves para buscar no dicionário de resultados, o tipo de dado (imagem, grade, texto, chave-valor) e canais de cor se aplicável
 MAIN_STEPS: List[Dict[str, Any]] = [
     {"title":"Pré-processamento", "sub":"Conversão para cinza e suavização.", "keys":["preproc","preprocessamento","gauss"], "kind":"image", "channels":"GRAY"},
     {"title":"Bordas e Contornos", "sub":"Regiões candidatas destacadas.", "keys":["contours_overlay","edges_overlay","bordas"], "kind":"image", "channels":"BGR"},
@@ -102,7 +104,7 @@ MAIN_STEPS: List[Dict[str, Any]] = [
     {"title":"OCR", "sub":"Leitura dos caracteres.", "keys":["ocr_text"], "kind":"text"},
     {"title":"Validação e Armazenamento", "sub":"Padrão, consistência e registro.", "keys":["validation"], "kind":"kv"},
 ]
-
+#em seguida ele define algumas funções auxiliares para verificar se um valor é vazio, para selecionar o primeiro valor não vazio de uma lista de chaves em um dicionário, e para renderizar diferentes tipos de dados (imagem, grade, texto, chave-valor) na interface do Streamlit
 def _is_empty(v: Any) -> bool:
     if v is None: return True
     if isinstance(v, str): return len(v.strip()) == 0
@@ -110,6 +112,7 @@ def _is_empty(v: Any) -> bool:
     if isinstance(v, np.ndarray): return v.size == 0
     return False
 
+#a função _pick_value seleciona o primeiro valor não vazio de uma lista de chaves em um dicionário
 def _pick_value(result: dict, keys: List[str]):
     for k in keys:
         if k in result:
@@ -117,7 +120,7 @@ def _pick_value(result: dict, keys: List[str]):
             if not _is_empty(v):
                 return v
     return result.get(keys[0])
-
+# a função _render chama a função apropriada (cropImage, cropGrid, etc) com base no tipo de dado, por exemplo, se for uma imagem, chama cropImage, se for uma grade, chama cropGrid, se for texto ou chave-valor, exibe o texto formatado
 def _render(kind: str, value: Any, channels=None):
     if kind == "image": cropImage(value, channels=channels)
     elif kind == "grid": cropGrid(value, channels=channels)
@@ -130,7 +133,7 @@ def _render(kind: str, value: Any, channels=None):
         else:
             rows = "".join([f"<div>{k}</div><div>{v}</div>" for k, v in data.items()])
             st.markdown(f'<div class="kv">{rows}</div>', unsafe_allow_html=True)
-
+# finalmente, a função panelPDI monta o painel completo de análise de processamento digital de imagem, aplicando o CSS personalizado, criando um título, e para cada etapa principal, cria um expander com o título e descrição, seleciona o valor correspondente do dicionário de resultados e chama a função _render para exibir o conteúdo apropriado
 def panelPDI(result: dict, show_tech: bool | None = None, key: str = "pdi"):
     st.markdown(PDI_CSS, unsafe_allow_html=True)
     st.markdown('<div class="pdi-exp">', unsafe_allow_html=True)
