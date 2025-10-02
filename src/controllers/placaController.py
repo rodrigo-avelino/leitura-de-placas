@@ -152,212 +152,106 @@ def _read_image_bgr(source: Any) -> np.ndarray:
 
 class PlacaController:
 
+    # Em src/controllers/placaController.py
     @staticmethod
     def processarImagem(source_image: Any, data_capturada: datetime, on_update=None):
-        """
-        Pipeline completo do MVP (não altera lógica original; apenas organiza e emite etapas):
-          1) Leitura robusta da imagem (BGR)
-          2) Pré-processamento (realce/ruído)
-          3) Bordas (Canny, etc.)
-          4) Contornos (findContours)
-          5) Filtragem de contornos -> candidatos a placa
-          6) Recorte por homografia (warping)
-          7) Binarização (realçar dígitos/letras)
-          8) Segmentação de caracteres (opcional)
-          9) OCR (por caracteres e por placa inteira)
-         10) Montagem do texto e validação posicional (Antiga/Mercosul)
-         11) Persistência no banco (se válido)
-
-        Parâmetros:
-          - source_image   : ver _read_image_bgr (aceita vários formatos)
-          - data_capturada : datetime a ser gravado no banco (UI envia)
-          - on_update      : callback opcional p/ UI (recebe dict incremental)
-
-        Retorno:
-          dict com status, texto_final, panel (para UI) e etapas (artefatos).
-        """
-        panel = {}  # armazena “snapshots” das etapas para a UI (debug/visual)
+        panel = {}
         def _emit(delta: dict):
-            """
-            Atualiza o painel e chama callback (se fornecido).
-            Não interfere no processamento; apenas expõe o estado atual.
-            """
             panel.update(delta)
             if on_update is not None:
                 on_update(delta)
 
-        # ------------------
-        # 1) Leitura imagem
-        # ------------------
+        # Etapas 1-7 (Leitura até a Segmentação)
+        # ... (esta parte inicial permanece a mesma)
         img_bgr = _read_image_bgr(source_image)
-        original = img_bgr.copy()  # guardamos uma cópia para overlays/armazenamento
+        original = img_bgr.copy()
         _emit({"original": original})
-
-        # -----------------------
-        # 2) Pré-processamento
-        # -----------------------
-        # Normalmente: conversão p/ cinza, CLAHE, blur, etc.
         preproc = Preprocessamento.executar(img_bgr)
         _emit({"preproc": preproc})
-
-        # --------------
-        # 3) Bordas
-        # --------------
-        # Ex.: Canny/gradiente; objetivo é realçar contornos que o próximo passo irá buscar.
         edges = Bordas.executar(preproc)
-
-        # ----------------
-        # 4) Contornos
-        # ----------------
-        # A partir das bordas, pegamos contornos; desenhamos overlay só p/ visualização.
         contours = Contornos.executar(edges)
         contours_overlay = _overlay_contours(original, contours)
         _emit({"contours_overlay": contours_overlay})
-
-        # ------------------------------
-        # 5) Filtragem de contornos
-        # ------------------------------
-        # Gera candidatos com score (aspect ratio, densidade de texto etc.).
-        # A ordem típica já vem por score (decrescente).
         candidatos = FiltrarContornos.executar(contours, img_bgr)
         if not candidatos:
-            # Retorno curto: sem candidatos, nada a fazer; devolvemos artefatos para debug.
-            return {
-                "status": "erro",
-                "texto_final": None,
-                "panel": panel,
-                "etapas": {
-                    "original": original,
-                    "preprocessamento": preproc,
-                    "bordas": edges,
-                    "contornos": contours,
-                    "candidatos": []
-                }
-            }
-
-        # Melhor candidato (índice 0)
+            return { "status": "erro", "texto_final": None, "panel": panel, "etapas": { "original": original, "preprocessamento": preproc, "bordas": edges, "contornos": contours, "candidatos": [] } }
         best = candidatos[0]
         plate_bbox_overlay = _overlay_quad(original, best.get("quad"))
         _emit({"plate_bbox_overlay": plate_bbox_overlay})
-
-        # ----------------------
-        # 6) Recorte da placa
-        # ----------------------
-        # Warping por homografia para “retificar” a placa em uma janela padrão.
-        crop_bgr = Recorte.executar(img_bgr, best.get("quad"))
-
-        # Padronizamos em RGB para facilitar binarização/OCR/visualização (Streamlit espera RGB)
-        crop_rgb = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2RGB)
-
-        # Heurística complementar: mede o percentual de “azul” do fundo (padrão Mercosul).
-        # NÃO substitui a validação posicional; apenas ajuda a rotular o padrão.
         from src.services.analiseCor import AnaliseCor
-        percent_azul = AnaliseCor.executar(crop_rgb)
+        crop_bgr = Recorte.executar(img_bgr, best.get("quad"))
+        crop_rgb = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2RGB)
+        percent_azul = AnaliseCor.executar(crop_rgb)["percent_azul"]
         _emit({"plate_crop": crop_rgb})
-
-        # -------------------
-        # 7) Binarização
-        # -------------------
-        # Realça caracteres; retorno é uma imagem 8-bit (0/255).
-        bin_img = Binarizacao.executar(crop_rgb)
-        _emit({"binarizacao": bin_img})  # para UI: exibimos a imagem binária
-
-        # ----------------------
-        # 8) Segmentação chars
-        # ----------------------
-        # (opcional) separar caracteres individuais; se não funcionar, OCR global cobre.
+        bin_img = Binarizacao.executar(crop_bgr)
+        _emit({"binarizacao": bin_img})
         chars = Segmentacao.executar(bin_img)
         _emit({"chars": chars})
 
-        # -----------
-        # 9) OCR
-        # -----------
-        # Duas estratégias: por caracteres segmentados e pela imagem inteira binarizada.
-        # O que validar primeiro será usado.
-        texto_chars = OCR.executarCaracteres(chars)
-        texto_raw = OCR.executarImg(bin_img)
+        # --- NOVA LÓGICA DE FUSÃO INTELIGENTE DE OCR ---
+
+        # 8) OCR - Executa as duas estratégias
+        texto_chars, confiancas_chars = OCR.executarCaracteres(chars)
+        texto_raw, _ = OCR.executarImg(bin_img)
+        
         ocr_text_display = f"Segmentado: '{texto_chars}' | Imagem Inteira: '{texto_raw}'"
         _emit({"ocr_text": ocr_text_display})
 
-        # -----------------------------------------
-        # 10) Montagem + Validação posicional
-        # -----------------------------------------
-        # Montagem: aplica regex para compor string no formato de placa.
-        # Validação: aplica regras de posição (LLLNLNN, etc.) e correções O<->0, I<->1...
+        # 9) Montagem e Criação da Lista de Candidatos Prioritários
+        montagem_chars = Montagem.executar(texto_chars)
+        montagem_raw = Montagem.executar(texto_raw)
+        
+        candidatos_ocr = []
+        
+        # Heurística de limpeza: se o segmentado tem 7 caracteres e está contido no raw (que tem ruído),
+        # o segmentado é o candidato de maior prioridade.
+        if len(montagem_chars) == 7 and len(montagem_raw) > 7 and montagem_chars in montagem_raw:
+            candidatos_ocr.append(montagem_chars)
+            candidatos_ocr.append(montagem_raw)
+        else:
+            # Caso contrário, segue a ordem de prioridade que estabelecemos (raw primeiro)
+            candidatos_ocr.append(montagem_raw)
+            candidatos_ocr.append(montagem_chars)
+        
+        # Remove duplicatas e strings vazias
+        candidatos_ocr = [c for c in list(dict.fromkeys(candidatos_ocr)) if c]
+
+        print(f"[DEBUG OCR] Candidatos a validar (em ordem de prioridade): {candidatos_ocr}")
+
+        # 10) Validação em Cascata
         texto_final = None
         montagem_final = ""
 
-        # Tenta primeiro a partir dos caracteres segmentados
-        if texto_chars:
-            montagem_chars = Montagem.executar(texto_chars)
-            texto_final = Validacao.executar(montagem_chars)
-            montagem_final = montagem_chars
-
-        # Se ainda não obteve uma placa válida, tenta a partir do OCR “bruto”
-        if not texto_final and texto_raw:
-            montagem_raw = Montagem.executar(texto_raw)
-            texto_final = Validacao.executar(montagem_raw)
-            montagem_final = montagem_raw
-
+        for i, cand in enumerate(candidatos_ocr):
+            print(f"[DEBUG Validação] Tentativa {i+1} com '{cand}'...")
+            # Para a validação do texto segmentado, usamos as confianças.
+            # Para os outros, a lista de confianças é vazia.
+            confiancas = confiancas_chars if cand == montagem_chars else []
+            validado = Validacao.executar(cand, confiancas)
+            
+            if validado:
+                texto_final = validado
+                montagem_final = cand # Salva o candidato que deu origem à validação
+                print(f"[DEBUG Validação] SUCESSO! Placa final: {texto_final}")
+                break # Para na primeira placa válida que encontrar
+        
         _emit({"plate_text": montagem_final})
 
-        # Rótulo do padrão (apenas informativo na UI)
+        # O resto do código (a partir da definição do 'padrao_placa') permanece o mesmo...
         padrao_placa = "INDEFINIDO"
         if texto_final:
-            # Se detectamos bastante azul OU o 5º char é letra, rotulamos Mercosul
-            if percent_azul > 0.05:
-                padrao_placa = "MERCOSUL"
-            elif len(texto_final) > 4 and texto_final[4].isalpha():
-                padrao_placa = "MERCOSUL"
-            else:
-                padrao_placa = "ANTIGA"
-
-        validation = {
-            "válida": bool(texto_final),
-            "entrada": montagem_final,      # string que entrou na validação
-            "saída": texto_final or "",     # string que saiu válida (ou vazio)
-            "padrão": padrao_placa
-        }
+            if percent_azul > 0.05: padrao_placa = "MERCOSUL"
+            elif len(texto_final) > 4 and texto_final[4].isalpha(): padrao_placa = "MERCOSUL"
+            else: padrao_placa = "ANTIGA"
+        validation = { "válida": bool(texto_final), "entrada": montagem_final, "saída": texto_final or "", "padrão": padrao_placa }
         _emit({"validation": validation})
-
-        # ----------------------------
-        # 11) Persistência no banco
-        # ----------------------------
-        # Salva somente se a placa passou pela validação (texto_final != None).
         status = "ok" if texto_final else "invalido"
         if texto_final:
-            # Preferimos salvar a imagem anotada (com bbox). Se não houver, usa original.
             img_annot = plate_bbox_overlay if plate_bbox_overlay is not None else original
-            Persistencia.salvar(
-                texto_final,   # placa validada
-                1.0,           # score (placeholder neste MVP)
-                original,      # imagem fonte (BGR)
-                crop_rgb,      # recorte (RGB)
-                img_annot,     # imagem anotada (BGR)
-                data_capturada # timestamp vindo da UI (respeita fuso do usuário)
-            )
+            Persistencia.salvar(texto_final, 1.0, original, crop_rgb, img_annot, data_capturada)
 
-        # Retornamos artefatos para a página montar cards/etapas de diagnóstico.
-        return {
-            "status": status,
-            "texto_final": texto_final,
-            "panel": panel,
-            "etapas": {
-                "original": original,
-                "preprocessamento": preproc,
-                "bordas": edges,
-                "contornos": contours,
-                "candidatos": candidatos,
-                "recorte": crop_rgb,
-                "binarizacao": bin_img,
-                "segmentacao": chars,
-                "ocr_raw": texto_raw,
-                "ocr_chars": texto_chars,
-                "montagem": montagem_final,
-                "validacao": texto_final
-            }
-        }
-
+        return { "status": status, "texto_final": texto_final, "panel": panel, "etapas": { "original": original, "preprocessamento": preproc, "bordas": edges, "contornos": contours, "candidatos": candidatos, "recorte": crop_rgb, "binarizacao": bin_img, "segmentacao": chars, "ocr_raw": texto_raw, "ocr_chars": texto_chars, "montagem": montagem_final, "validacao": texto_final } }   
+    
     @staticmethod
     def consultarRegistros(arg=None, data_inicio: datetime = None, data_fim: datetime = None):
         """
