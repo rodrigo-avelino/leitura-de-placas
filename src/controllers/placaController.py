@@ -161,97 +161,101 @@ class PlacaController:
             if on_update is not None:
                 on_update(delta)
 
-        # Etapas 1-7 (Leitura até a Segmentação)
-        # ... (esta parte inicial permanece a mesma)
+        # Etapa 1: Leitura da Imagem
         img_bgr = _read_image_bgr(source_image)
         original = img_bgr.copy()
         _emit({"original": original})
+
+        # Etapa 2: Pré-processamento
         preproc = Preprocessamento.executar(img_bgr)
         _emit({"preproc": preproc})
+
+        # Etapa 3 e 4: Bordas e Contornos
         edges = Bordas.executar(preproc)
         contours = Contornos.executar(edges)
-        contours_overlay = _overlay_contours(original, contours)
-        _emit({"contours_overlay": contours_overlay})
+        _emit({"contours_overlay": _overlay_contours(original, contours)})
+
+        # Etapa 5: Filtrar Contornos para encontrar a placa
         candidatos = FiltrarContornos.executar(contours, img_bgr)
         if not candidatos:
+            # Retorna erro se nenhuma placa for encontrada
             return { "status": "erro", "texto_final": None, "panel": panel, "etapas": { "original": original, "preprocessamento": preproc, "bordas": edges, "contornos": contours, "candidatos": [] } }
+        
         best = candidatos[0]
         plate_bbox_overlay = _overlay_quad(original, best.get("quad"))
         _emit({"plate_bbox_overlay": plate_bbox_overlay})
+
+        # Etapa 6: Recorte e Análise de Cor
         from src.services.analiseCor import AnaliseCor
         crop_bgr = Recorte.executar(img_bgr, best.get("quad"))
         crop_rgb = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2RGB)
-        percent_azul = AnaliseCor.executar(crop_rgb)["percent_azul"]
+        analise_cores = AnaliseCor.executar(crop_bgr)
         _emit({"plate_crop": crop_rgb})
+
+        # Etapa 7: Binarização
         bin_img = Binarizacao.executar(crop_bgr)
         _emit({"binarizacao": bin_img})
+
+        # Etapa 8: Segmentação (para exibição)
         chars = Segmentacao.executar(bin_img)
         _emit({"chars": chars})
 
-        # --- NOVA LÓGICA DE FUSÃO INTELIGENTE DE OCR ---
+        # Etapa 9: OCR
+        texto_ocr, confiancas = OCR.executarImg(bin_img)
+        _emit({"ocr_text": texto_ocr})
 
-        # 8) OCR - Executa as duas estratégias
-        texto_chars, confiancas_chars = OCR.executarCaracteres(chars)
-        texto_raw, _ = OCR.executarImg(bin_img)
-        
-        ocr_text_display = f"Segmentado: '{texto_chars}' | Imagem Inteira: '{texto_raw}'"
-        _emit({"ocr_text": ocr_text_display})
-
-        # 9) Montagem e Criação da Lista de Candidatos Prioritários
-        montagem_chars = Montagem.executar(texto_chars)
-        montagem_raw = Montagem.executar(texto_raw)
-        
-        candidatos_ocr = []
-        
-        # Heurística de limpeza: se o segmentado tem 7 caracteres e está contido no raw (que tem ruído),
-        # o segmentado é o candidato de maior prioridade.
-        if len(montagem_chars) == 7 and len(montagem_raw) > 7 and montagem_chars in montagem_raw:
-            candidatos_ocr.append(montagem_chars)
-            candidatos_ocr.append(montagem_raw)
-        else:
-            # Caso contrário, segue a ordem de prioridade que estabelecemos (raw primeiro)
-            candidatos_ocr.append(montagem_raw)
-            candidatos_ocr.append(montagem_chars)
-        
-        # Remove duplicatas e strings vazias
-        candidatos_ocr = [c for c in list(dict.fromkeys(candidatos_ocr)) if c]
-
-        print(f"[DEBUG OCR] Candidatos a validar (em ordem de prioridade): {candidatos_ocr}")
-
-        # 10) Validação em Cascata
-        texto_final = None
-        montagem_final = ""
-
-        for i, cand in enumerate(candidatos_ocr):
-            print(f"[DEBUG Validação] Tentativa {i+1} com '{cand}'...")
-            # Para a validação do texto segmentado, usamos as confianças.
-            # Para os outros, a lista de confianças é vazia.
-            confiancas = confiancas_chars if cand == montagem_chars else []
-            validado = Validacao.executar(cand, confiancas)
-            
-            if validado:
-                texto_final = validado
-                montagem_final = cand # Salva o candidato que deu origem à validação
-                print(f"[DEBUG Validação] SUCESSO! Placa final: {texto_final}")
-                break # Para na primeira placa válida que encontrar
-        
+        # Etapa 10: Montagem
+        montagem_final = Montagem.executar(texto_ocr)
         _emit({"plate_text": montagem_final})
 
-        # O resto do código (a partir da definição do 'padrao_placa') permanece o mesmo...
+        # --- NOVA LÓGICA DE DECISÃO INTELIGENTE ---
+        
+        # Etapa 11: Validação gera uma lista de possibilidades
+        placas_validas = Validacao.executar(montagem_final, confiancas)
+        
+        texto_final = None
         padrao_placa = "INDEFINIDO"
-        if texto_final:
-            if percent_azul > 0.05: padrao_placa = "MERCOSUL"
-            elif len(texto_final) > 4 and texto_final[4].isalpha(): padrao_placa = "MERCOSUL"
-            else: padrao_placa = "ANTIGA"
+
+        if not placas_validas:
+            print("[INFO] Nenhuma interpretação de placa válida foi encontrada.")
+        elif len(placas_validas) == 1:
+            # Se só há uma possibilidade, ela é a correta.
+            texto_final, padrao_placa = placas_validas[0]
+            print(f"[INFO] Validação única encontrada: {texto_final} ({padrao_placa})")
+        else:
+            # Se há ambiguidade (ex: pode ser Antiga E Mercosul), usamos a cor para desempatar.
+            print(f"[INFO] Ambiguidade detectada: {placas_validas}. Usando cor para decidir.")
+            percent_azul = analise_cores["percent_azul"]
+            
+            if percent_azul > 0.05:
+                # Se tem azul, procuramos a opção Mercosul na lista
+                for placa, padrao in placas_validas:
+                    if padrao == "MERCOSUL":
+                        texto_final, padrao_placa = placa, padrao
+                        break
+            else:
+                # Se não tem azul, procuramos a opção Antiga na lista
+                for placa, padrao in placas_validas:
+                    if padrao == "ANTIGA":
+                        texto_final, padrao_placa = placa, padrao
+                        break
+            
+            # Se mesmo assim não achou (caso raro), pega a primeira da lista como fallback
+            if not texto_final:
+                texto_final, padrao_placa = placas_validas[0]
+
+            print(f"[INFO] Desempate por cor escolheu: {texto_final} ({padrao_placa})")
+
+        # Etapa 12: Preparar resultado para a UI e Persistência
         validation = { "válida": bool(texto_final), "entrada": montagem_final, "saída": texto_final or "", "padrão": padrao_placa }
         _emit({"validation": validation})
         status = "ok" if texto_final else "invalido"
+        
         if texto_final:
             img_annot = plate_bbox_overlay if plate_bbox_overlay is not None else original
             Persistencia.salvar(texto_final, 1.0, original, crop_rgb, img_annot, data_capturada)
-
-        return { "status": status, "texto_final": texto_final, "panel": panel, "etapas": { "original": original, "preprocessamento": preproc, "bordas": edges, "contornos": contours, "candidatos": candidatos, "recorte": crop_rgb, "binarizacao": bin_img, "segmentacao": chars, "ocr_raw": texto_raw, "ocr_chars": texto_chars, "montagem": montagem_final, "validacao": texto_final } }   
-    
+            
+        return { "status": status, "texto_final": texto_final, "panel": panel, "etapas": { "original": original, "preprocessamento": preproc, "bordas": edges, "contornos": contours, "candidatos": candidatos, "recorte": crop_rgb, "binarizacao": bin_img, "segmentacao": chars, "ocr_raw": texto_ocr, "ocr_chars": "", "montagem": montagem_final, "validacao": texto_final } }    
     @staticmethod
     def consultarRegistros(arg=None, data_inicio: datetime = None, data_fim: datetime = None):
         """
