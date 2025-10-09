@@ -34,28 +34,15 @@ class ProcessarImagemPage:
 
         with c2:
             # -------------------------------------------
-            # Dropdown de hora com intervalos de 30 min,
-            # formato 24h (ex.: 07:00, 07:30, 08:00, ...).
-            # Também seleciona automaticamente a meia hora
-            # mais próxima da hora atual.
+            # substitui o dropdown por timeinput
+            # permite o usuário escolher qualquer hora/minuto
+            # valor padrao = hora atual 
             # -------------------------------------------
-            opcoes = []
-            valores = {}
-            for h in range(24):
-                for m in (0, 30):
-                    t = time(h, m)
-                    label = f"{h:02d}:{m:02d}"  # exemplo: "07:00"
-                    opcoes.append(label)
-                    valores[label] = t
-
-            # Arredonda a hora atual para 00 ou 30 minutos
-            agora = datetime.now()
-            minuto_ajustado = 0 if agora.minute < 30 else 30
-            hora_atual_label = f"{agora.hour:02d}:{minuto_ajustado:02d}"
-
-            # Selectbox com as opções geradas
-            hora_str = st.selectbox("Hora", opcoes, index=opcoes.index(hora_atual_label))
-            hora_captura = valores[hora_str]
+            agora = datetime.now().time()
+            hora_captura = st.time_input(
+                "Hora",
+                value=time(agora.hour, agora.minute)
+            )
 
         # -----------------------------------------------
         # Upload de imagem (apenas 1 arquivo)
