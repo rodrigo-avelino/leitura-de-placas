@@ -71,7 +71,7 @@ def navbar(active_page: str):
 
     # --- CORREÇÃO APLICADA AQUI ---
     # Mudamos de 2 para 3 colunas e adicionamos o novo botão
-    c1, c2, c3 = st.columns(3, gap="small")
+    c1, c2, c3, c4 = st.columns(4, gap="small")
     with c1:
         st.button(
             "Processar Imagem",
@@ -97,6 +97,14 @@ def navbar(active_page: str):
             use_container_width=True,
             type=("primary" if active_page == "debug" else "secondary"),
             on_click=_go, args=("debug",),
+        )
+    with c4: # NOVO BOTÃO
+        st.button(
+            "Debug Detecção",
+            key="nav_debug_deteccao",
+            use_container_width=True,
+            type=("primary" if active_page == "debug_deteccao" else "secondary"),
+            on_click=_go, args=("debug_deteccao",),
         )
 
     # O script para aplicar a classe .navbar-row continua o mesmo

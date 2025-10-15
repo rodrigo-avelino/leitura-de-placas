@@ -1,0 +1,239 @@
+--- Relatório Detalhado de Falhas ---
+
+Arquivo: img_011041.jpg | Esperado: QRE3C07 | Erro: Falha na Detecção
+Arquivo: img_001907.jpg | Esperado: MKA7333 | Erro: Falha na Detecção
+Arquivo: img_001444.jpg | Esperado: MTU0472 | Erro: Falha no OCR/Validação (lido: COREAMR)
+Arquivo: img_013687.jpg | Esperado: PPL1H66 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_004523.jpg | Esperado: ODB8999 | Erro: Falha na Detecção
+Arquivo: img_001656.jpg | Esperado: ODE9783 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_011304.jpg | Esperado: QRJ6J94 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_013160.jpg | Esperado: OYH9F54 | Erro: Falha na Detecção
+Arquivo: img_001866.jpg | Esperado: MTZ8488 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_000422.jpg | Esperado: PPW2922 | Erro: Falha na Detecção
+Arquivo: img_003031.jpg | Esperado: OKL2076 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_013233.jpg | Esperado: QRF6H62 | Lido: ORF6H62
+Arquivo: img_012819.jpg | Esperado: MSM1I02 | Erro: Falha na Detecção
+Arquivo: img_004005.jpg | Esperado: MSW1316 | Erro: Falha na Detecção
+Arquivo: img_010587.jpg | Esperado: QRF8F09 | Lido: ORF8F09
+Arquivo: img_010575.jpg | Esperado: QRH1H63 | Lido: ORH1H63
+Arquivo: img_004171.jpg | Esperado: ODT3275 | Lido: OOT3Z75
+Arquivo: img_002360.jpg | Esperado: MQS2638 | Lido: MOS2G38
+Arquivo: img_014064.jpg | Esperado: PKW5D18 | Lido: PKW5O18
+Arquivo: img_010224.jpg | Esperado: PXE3F60 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_011870.jpg | Esperado: OPL4F63 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_011003.jpg | Esperado: QRF4I26 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_004626.jpg | Esperado: MSN9894 | Erro: Falha na Detecção
+Arquivo: img_004209.jpg | Esperado: JSK7937 | Erro: Falha na Detecção
+Arquivo: img_013520.jpg | Esperado: QRG2H80 | Lido: ORG2H80
+Arquivo: img_013530.jpg | Esperado: OVF6D44 | Lido: OVF6O44
+Arquivo: img_000770.jpg | Esperado: PPN3181 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_002625.jpg | Esperado: OYK7466 | Erro: Falha no OCR/Validação (lido: K7466)
+Arquivo: img_010606.jpg | Esperado: QRE4E99 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_014951.jpg | Esperado: ODD7B45 | Lido: OOO7845
+Arquivo: img_010610.jpg | Esperado: MTE0G02 | Lido: HTL6G02
+Arquivo: img_004165.jpg | Esperado: ODL1997 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_001960.jpg | Esperado: ODP0519 | Lido: OOP0S19
+Arquivo: img_013873.jpg | Esperado: QRJ1H35 | Lido: ORJ1H35
+Arquivo: img_001373.jpg | Esperado: ODK8117 | Lido: OOK8I17
+Arquivo: img_001461.jpg | Esperado: MRL3604 | Erro: Falha na Detecção
+Arquivo: img_002918.jpg | Esperado: ODT6129 | Erro: Falha na Detecção
+Arquivo: img_002515.jpg | Esperado: PPX4326 | Erro: Falha na Detecção
+Arquivo: img_012195.jpg | Esperado: ODT7I40 | Lido: ODI7I40
+Arquivo: img_004758.jpg | Esperado: MTY4529 | Erro: Falha na Detecção
+Arquivo: img_000136.jpg | Esperado: ODR2138 | Erro: Falha no OCR/Validação (lido: BMOA)
+Arquivo: img_013250.jpg | Esperado: ODF0C19 | Lido: ONF0C19
+Arquivo: img_002267.jpg | Esperado: PKI3355 | Erro: Falha na Detecção
+Arquivo: img_004199.jpg | Esperado: MQR8242 | Lido: MOR8242
+Arquivo: img_002950.jpg | Esperado: PPP9789 | Erro: Falha na Detecção
+Arquivo: img_010511.jpg | Esperado: ODH3E38 | Lido: QOH3E30
+Arquivo: img_000509.jpg | Esperado: ODI1892 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_004065.jpg | Esperado: OVH0611 | Erro: Falha na Detecção
+Arquivo: img_011607.jpg | Esperado: OYH9A69 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_011409.jpg | Esperado: DML7H99 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_010896.jpg | Esperado: ODJ5E24 | Lido: OOJ5E24
+Arquivo: img_000473.jpg | Esperado: ODF4532 | Lido: OOF4532
+Arquivo: img_011797.jpg | Esperado: PPP7H63 | Erro: Falha na Detecção
+Arquivo: img_004282.jpg | Esperado: OQG1325 | Erro: Falha na Detecção
+Arquivo: img_000586.jpg | Esperado: PPE0122 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_001764.jpg | Esperado: ODT6131 | Erro: Falha na Detecção
+Arquivo: img_002582.jpg | Esperado: ODF1587 | Lido: OOF1587
+Arquivo: img_002272.jpg | Esperado: PPH5379 | Erro: Falha na Detecção
+Arquivo: img_003036.jpg | Esperado: ODE4816 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_011551.jpg | Esperado: QRJ2E00 | Erro: Falha no OCR/Validação (lido: QRJ2E0U)
+Arquivo: img_004847.jpg | Esperado: ODH7515 | Erro: Falha na Detecção
+Arquivo: img_011145.jpg | Esperado: ODA2H02 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_010843.jpg | Esperado: QRC9D08 | Lido: QRC9O08
+Arquivo: img_010708.jpg | Esperado: FOU3I88 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_011206.jpg | Esperado: QBA2A72 | Lido: OBA2A72
+Arquivo: img_001351.jpg | Esperado: PPG0223 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_000785.jpg | Esperado: MSV6051 | Erro: Falha na Detecção
+Arquivo: img_012992.jpg | Esperado: OCW2A98 | Lido: OCG2A98
+Arquivo: img_002204.jpg | Esperado: ODO0659 | Lido: OOO0G59
+Arquivo: img_002607.jpg | Esperado: MSB4766 | Lido: IGP4766
+Arquivo: img_011789.jpg | Esperado: MTR6C53 | Lido: HTR6C53
+Arquivo: img_003667.jpg | Esperado: PPR0808 | Erro: Falha na Detecção
+Arquivo: img_012857.jpg | Esperado: FND4B85 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_001516.jpg | Esperado: ODS6119 | Erro: Falha no OCR/Validação (lido: ELERRA0DS6119)
+Arquivo: img_003892.jpg | Esperado: ODE8151 | Erro: Falha no OCR/Validação (lido: ODE815)
+Arquivo: img_010929.jpg | Esperado: MTO0B78 | Lido: MTO0C78
+Arquivo: img_010245.jpg | Esperado: QRE7D75 | Lido: QRE7O75
+Arquivo: img_010735.jpg | Esperado: PPU6D79 | Lido: PPU6079
+Arquivo: img_010736.jpg | Esperado: MTY0G49 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_002305.jpg | Esperado: BYQ3760 | Erro: Falha na Detecção
+Arquivo: img_000243.jpg | Esperado: MPK7245 | Erro: Falha na Detecção
+Arquivo: img_011152.jpg | Esperado: QRG5D06 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_004106.jpg | Esperado: MTQ2864 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_003144.jpg | Esperado: PPP4197 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_001668.jpg | Esperado: ODK0482 | Lido: OOK0482
+Arquivo: img_004732.jpg | Esperado: MSU2177 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_004484.jpg | Esperado: JGJ2547 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_000078.jpg | Esperado: EYO3502 | Erro: Falha na Detecção
+Arquivo: img_013087.jpg | Esperado: PPJ2H07 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_004694.jpg | Esperado: MQT8892 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_004104.jpg | Esperado: ODQ3176 | Erro: Falha na Detecção
+Arquivo: img_012940.jpg | Esperado: QRF4B71 | Erro: Falha no OCR/Validação (lido: COMUNITARIO)
+Arquivo: img_000088.jpg | Esperado: OYG1026 | Erro: Falha no OCR/Validação (lido: TURISMOBRASIL)
+Arquivo: img_010574.jpg | Esperado: EAN2G57 | Erro: Falha na Detecção
+Arquivo: img_002633.jpg | Esperado: PPW1889 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_011497.jpg | Esperado: QRF4J30 | Erro: Falha na Detecção
+Arquivo: img_003902.jpg | Esperado: OZN3816 | Erro: Falha no OCR/Validação (lido: MARCOPO)
+Arquivo: img_004860.jpg | Esperado: ODH7986 | Erro: Falha na Detecção
+Arquivo: img_002524.jpg | Esperado: QOD0956 | Lido: OOO0G56
+Arquivo: img_012614.jpg | Esperado: QRF8G17 | Lido: ORF8617
+Arquivo: img_010636.jpg | Esperado: QRF8G01 | Erro: Falha na Detecção
+Arquivo: img_001480.jpg | Esperado: PPS4192 | Erro: Falha no OCR/Validação (lido: OAPMETUNA)
+Arquivo: img_013124.jpg | Esperado: ODO0E50 | Lido: ODO6E50
+Arquivo: img_010588.jpg | Esperado: QOK6I93 | Erro: Falha na Detecção
+Arquivo: img_002229.jpg | Esperado: OYF4011 | Erro: Falha na Detecção
+Arquivo: img_000535.jpg | Esperado: ODI1892 | Lido: ATE0O11
+Arquivo: img_012804.jpg | Esperado: ODS3B73 | Lido: OOS3873
+Arquivo: img_000948.jpg | Esperado: OWJ3885 | Erro: Falha no OCR/Validação (lido: 13885)
+Arquivo: img_011011.jpg | Esperado: QRI8C04 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_002616.jpg | Esperado: ODM6350 | Erro: Falha no OCR/Validação (lido: 006350)
+Arquivo: img_002025.jpg | Esperado: OVL6085 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_002840.jpg | Esperado: PPP9312 | Erro: Falha na Detecção
+Arquivo: img_010542.jpg | Esperado: QRF8F09 | Erro: Falha na Detecção
+Arquivo: img_012219.jpg | Esperado: QRE8E39 | Lido: ORE8E39
+Arquivo: img_003660.jpg | Esperado: MTA1883 | Erro: Falha na Detecção
+Arquivo: img_003241.jpg | Esperado: ODS6953 | Lido: OOS6G53
+Arquivo: img_004990.jpg | Esperado: OVK2611 | Erro: Falha no OCR/Validação (lido: OVK261)
+Arquivo: img_002276.jpg | Esperado: MTZ3256 | Lido: MTZ3258
+Arquivo: img_000385.jpg | Esperado: PPB2418 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_011616.jpg | Esperado: QRJ1G54 | Erro: Falha no OCR/Validação (lido: 11654)
+Arquivo: img_012624.jpg | Esperado: MQA3D68 | Lido: HOA3O68
+Arquivo: img_001084.jpg | Esperado: PPW9117 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_010800.jpg | Esperado: QRF7H89 | Lido: ORF7H89
+Arquivo: img_003105.jpg | Esperado: MTZ8488 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_004125.jpg | Esperado: ODS9035 | Erro: Falha na Detecção
+Arquivo: img_003089.jpg | Esperado: PPW1955 | Erro: Falha na Detecção
+Arquivo: img_014804.jpg | Esperado: MRQ3C59 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_001376.jpg | Esperado: ODP0519 | Lido: OOP0S19
+Arquivo: img_014844.jpg | Esperado: OVF8D69 | Lido: OVF8069
+Arquivo: img_012473.jpg | Esperado: QRF6J36 | Lido: QRF6336
+Arquivo: img_012105.jpg | Esperado: NYP9C89 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_002816.jpg | Esperado: MTZ8488 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_013048.jpg | Esperado: OVL1D36 | Lido: OVL1036
+Arquivo: img_010618.jpg | Esperado: OCV8D18 | Erro: Falha na Detecção
+Arquivo: img_010820.jpg | Esperado: OVF8D73 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_010775.jpg | Esperado: QRE4E62 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_010491.jpg | Esperado: QRJ3D66 | Lido: QRJ3O66
+Arquivo: img_002746.jpg | Esperado: PPP9312 | Erro: Falha na Detecção
+Arquivo: img_003824.jpg | Esperado: LQP3298 | Erro: Falha no OCR/Validação (lido: HILUX)
+Arquivo: img_004409.jpg | Esperado: PPF0655 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_002747.jpg | Esperado: ODI1892 | Lido: AOD1189
+Arquivo: img_012910.jpg | Esperado: QRJ5B49 | Erro: Falha no OCR/Validação (lido: AMCAJUAMA)
+Arquivo: img_003366.jpg | Esperado: MTY1273 | Erro: Falha na Detecção
+Arquivo: img_000597.jpg | Esperado: PPI7628 | Erro: Falha na Detecção
+Arquivo: img_011826.jpg | Esperado: QRF0J82 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_003759.jpg | Esperado: QQY3281 | Erro: Falha na Detecção
+Arquivo: img_010653.jpg | Esperado: QRE4E62 | Erro: Falha no OCR/Validação (lido: QRE4E6)
+Arquivo: img_002230.jpg | Esperado: ODS4352 | Lido: OOS4352
+Arquivo: img_014892.jpg | Esperado: QRE8D41 | Lido: QRE8041
+Arquivo: img_004619.jpg | Esperado: MPK8072 | Erro: Falha na Detecção
+Arquivo: img_010835.jpg | Esperado: PPA7F58 | Erro: Falha na Detecção
+Arquivo: img_004451.jpg | Esperado: QRC7572 | Erro: Falha na Detecção
+Arquivo: img_000240.jpg | Esperado: ODG6312 | Erro: Falha na Detecção
+Arquivo: img_000650.jpg | Esperado: ODM6350 | Lido: OOM6350
+Arquivo: img_014058.jpg | Esperado: PPK7J67 | Lido: PPK7367
+Arquivo: img_000138.jpg | Esperado: ODM7278 | Erro: Falha na Detecção
+Arquivo: img_000350.jpg | Esperado: MQZ2664 | Lido: MOZ2G64
+Arquivo: img_000423.jpg | Esperado: MSE9818 | Erro: Falha no OCR/Validação (lido: NSE98TE)
+Arquivo: img_000461.jpg | Esperado: QRB8654 | Erro: Falha no OCR/Validação (lido: HILLA)
+Arquivo: img_001269.jpg | Esperado: ODO9891 | Lido: OOO9891
+Arquivo: img_014220.jpg | Esperado: RIO0J17 | Lido: RIO0317
+Arquivo: img_004709.jpg | Esperado: MTV2316 | Erro: Falha na Detecção
+Arquivo: img_004132.jpg | Esperado: PPB6700 | Erro: Falha no OCR/Validação (lido: PPBF700)
+Arquivo: img_010842.jpg | Esperado: OVF3J74 | Lido: OVF3374
+Arquivo: img_003996.jpg | Esperado: MTU9456 | Erro: Falha no OCR/Validação (lido: TU9456)
+Arquivo: img_002169.jpg | Esperado: MSB0344 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_004155.jpg | Esperado: MTL0940 | Erro: Falha na Detecção
+Arquivo: img_001212.jpg | Esperado: MTZ9247 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_010758.jpg | Esperado: QRJ8D08 | Lido: QRJ8008
+Arquivo: img_010802.jpg | Esperado: QRE1I46 | Erro: Falha na Detecção
+Arquivo: img_000201.jpg | Esperado: ODR3984 | Lido: DDR3984
+Arquivo: img_004581.jpg | Esperado: OYD0023 | Erro: Falha na Detecção
+Arquivo: img_011814.jpg | Esperado: QRH7C06 | Lido: QRH2C06
+Arquivo: img_012884.jpg | Esperado: AWS4D70 | Lido: AHS4O70
+Arquivo: img_013665.jpg | Esperado: ODT7C89 | Lido: OOI7C89
+Arquivo: img_004131.jpg | Esperado: ODF0494 | Erro: Falha na Detecção
+Arquivo: img_001243.jpg | Esperado: ODO9891 | Lido: OOO9891
+Arquivo: img_001225.jpg | Esperado: OYJ3909 | Erro: Falha na Detecção
+Arquivo: img_010874.jpg | Esperado: PPY0B08 | Lido: PPY6808
+Arquivo: img_004728.jpg | Esperado: MQO1384 | Erro: Falha na Detecção
+Arquivo: img_010750.jpg | Esperado: OYE7C53 | Erro: Falha na Detecção
+Arquivo: img_012066.jpg | Esperado: OAT3A07 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_003595.jpg | Esperado: ODQ6655 | Erro: Falha na Detecção
+Arquivo: img_013566.jpg | Esperado: PPH0A18 | Erro: Falha no OCR/Validação (lido: OPPHOA18)
+Arquivo: img_013208.jpg | Esperado: OYH7H15 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_012169.jpg | Esperado: NRW0F55 | Lido: NRV0F55
+Arquivo: img_001486.jpg | Esperado: OCW3864 | Erro: Falha na Detecção
+Arquivo: img_000424.jpg | Esperado: EZR1163 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_012024.jpg | Esperado: MRB2E02 | Lido: HRB2E02
+Arquivo: img_001797.jpg | Esperado: ODR3127 | Erro: Falha na Detecção
+Arquivo: img_001488.jpg | Esperado: ODR3127 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_004727.jpg | Esperado: PPE4786 | Erro: Falha na Detecção
+Arquivo: img_000257.jpg | Esperado: PPC9486 | Erro: Falha na Detecção
+Arquivo: img_011846.jpg | Esperado: QRF4G14 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_001858.jpg | Esperado: ODG3967 | Erro: Falha na Detecção
+Arquivo: img_010560.jpg | Esperado: QRG1I51 | Lido: ORG1157
+Arquivo: img_001874.jpg | Esperado: ODR3127 | Erro: Falha na Detecção
+Arquivo: img_014378.jpg | Esperado: PPY9J65 | Lido: PPY9365
+Arquivo: img_001242.jpg | Esperado: MSM2979 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_000503.jpg | Esperado: QRD1552 | Erro: Falha na Detecção
+Arquivo: img_010761.jpg | Esperado: QRF7B75 | Lido: QRF7G75
+Arquivo: img_003597.jpg | Esperado: MTX4895 | Erro: Falha na Detecção
+Arquivo: img_001569.jpg | Esperado: MSB4766 | Lido: MSR4766
+Arquivo: img_010037.jpg | Esperado: PPI7A95 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_000269.jpg | Esperado: PPA1379 | Erro: Falha na Detecção
+Arquivo: img_010599.jpg | Esperado: QRF6I63 | Erro: Falha na Detecção
+Arquivo: img_000453.jpg | Esperado: PPO2122 | Erro: Falha na Detecção
+Arquivo: img_003920.jpg | Esperado: LOL1575 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_004295.jpg | Esperado: OCZ5759 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_012765.jpg | Esperado: QRJ7A99 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_013734.jpg | Esperado: MSC4G65 | Erro: Falha na Detecção
+Arquivo: img_001063.jpg | Esperado: MTY6226 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_000552.jpg | Esperado: MTG5739 | Lido: VTG5T39
+Arquivo: img_010158.jpg | Esperado: ODL2J56 | Lido: OOO2O50
+Arquivo: img_000369.jpg | Esperado: ODF5623 | Lido: DOF5G23
+Arquivo: img_010591.jpg | Esperado: PUV5E07 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_001643.jpg | Esperado: ODF7548 | Lido: OOF7S48
+Arquivo: img_002646.jpg | Esperado: LQF8280 | Lido: LOF8280
+Arquivo: img_012071.jpg | Esperado: QRI1G54 | Erro: Falha no OCR/Validação (lido: 000000)
+Arquivo: img_001665.jpg | Esperado: OVH0968 | Lido: IVH0G68
+Arquivo: img_010046.jpg | Esperado: MTX5H48 | Erro: Falha no OCR/Validação (lido: MIEH40)
+Arquivo: img_004316.jpg | Esperado: MRG6192 | Erro: Falha na Detecção
+Arquivo: img_000850.jpg | Esperado: MSB7881 | Erro: Falha no OCR/Validação (lido: MSB788)
+Arquivo: img_011279.jpg | Esperado: PPS0A07 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_002293.jpg | Esperado: QQI3866 | Erro: Falha na Detecção
+Arquivo: img_000124.jpg | Esperado: OYJ7768 | Erro: Falha na Detecção
+Arquivo: img_004143.jpg | Esperado: MRP7201 | Erro: Falha na Detecção
+Arquivo: img_003533.jpg | Esperado: PPO5136 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_000993.jpg | Esperado: MTS3944 | Erro: Falha no OCR/Validação (lido: TS3944)
+Arquivo: img_011977.jpg | Esperado: QRL9D95 | Erro: Falha no OCR/Validação (lido: RL9095)
+Arquivo: img_002701.jpg | Esperado: PPN2471 | Erro: Falha no OCR/Validação (lido: PPN247)
+Arquivo: img_001504.jpg | Esperado: PPV2861 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_000866.jpg | Esperado: ODO9564 | Lido: OOO9S64
+Arquivo: img_002289.jpg | Esperado: OLE8866 | Erro: Falha no OCR/Validação (lido: E8866)
+Arquivo: img_014682.jpg | Esperado: OCV6C66 | Erro: Falha no OCR/Validação (lido: )
+Arquivo: img_011563.jpg | Esperado: PYE2I10 | Erro: Falha na Detecção
+Arquivo: img_002205.jpg | Esperado: ODR4042 | Lido: DDR4042

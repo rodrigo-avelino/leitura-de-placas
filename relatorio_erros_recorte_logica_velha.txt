@@ -1,0 +1,25 @@
+--- Relatório Detalhado de Falhas de Localização ---
+
+Arquivo                   | Score IoU
+----------------------------------------
+img_003419.jpg            | 0.000
+img_003146.jpg            | 0.000
+img_001182.jpg            | 0.000
+img_014568.jpg            | 0.000
+img_003497.jpg            | 0.000
+img_001807.jpg            | 0.000
+img_004080.jpg            | 0.000
+img_003057.jpg            | 0.000
+img_001723.jpg            | 0.000
+img_013849.jpg            | 0.000
+img_002247.jpg            | 0.098
+img_012790.jpg            | 0.105
+img_013349.jpg            | 0.134
+img_012169.jpg            | 0.211
+img_004843.jpg            | 0.258
+img_002554.jpg            | 0.333
+img_003939.jpg            | 0.379
+img_001055.jpg            | 0.403
+img_004927.jpg            | 0.410
+img_002646.jpg            | 0.472
+img_012752.jpg            | 0.485

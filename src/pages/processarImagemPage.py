@@ -110,11 +110,17 @@ class ProcessarImagemPage:
 
                 placa = result.get("texto_final")
                 if placa:
+                    # --- CORREÇÃO APLICADA AQUI ---
+                    # Buscamos o recorte do painel (session_state) em vez do 'result'
+                    recorte_final = st.session_state["pdi_result"].get("plate_crop")
+                    
                     col1, col2 = st.columns([3, 1])
                     with col1:
                         st.success(f"Placa reconhecida: {placa}")
                     with col2:
-                        st.image(result['etapas']['recorte'], width='stretch')
+                        # Verifica se o recorte existe antes de tentar exibi-lo
+                        if recorte_final is not None:
+                            st.image(recorte_final, use_container_width=True)
 
                     status.update(label=f"{file.name} finalizado (OK: {placa})", state="complete")
                 else:
