@@ -1,4 +1,4 @@
-# evaluate_full_pipeline.py (Versão 3.3 - Desambiguação Adaptativa com Métricas)
+# evaluate_full_pipeline.py (Versão 3.8 - Com Fallback Inteligente nos Top 3 Candidatos)
 
 import argparse
 import time
@@ -10,8 +10,8 @@ from multiprocessing import Pool, cpu_count
 from tqdm import tqdm
 from shapely.geometry import Polygon
 import functools
-# import logging  # REMOVIDO
-# import sys      # REMOVIDO
+import logging
+# import sys # Descomente se precisar imprimir erros críticos no stderr
 
 # Importa todos os serviços necessários
 from src.services.preprocessamento import Preprocessamento
@@ -22,7 +22,7 @@ from src.services.recorte import Recorte
 from src.services.ocr import OCR
 from src.services.montagem import Montagem
 from src.services.validacao import Validacao
-from src.services.analiseCor import AnaliseCor # <<< Necessário para a desambiguação
+from src.services.analiseCor import AnaliseCor
 
 # --- (Funções levenshtein_distance, parse_ground_truth, calculate_iou permanecem iguais) ---
 def levenshtein_distance(s1: str, s2: str) -> int:
@@ -60,12 +60,10 @@ def calculate_iou(quad1: np.ndarray, quad2: np.ndarray) -> float:
 # --- FIM DAS FUNÇÕES HELPER ---
 
 
-def process_single_image_e2e(img_path: Path, iou_threshold: float, blue_threshold: float) -> dict: # Adicionado blue_threshold
+def process_single_image_e2e(img_path: Path, iou_threshold: float, blue_threshold: float) -> dict:
     """
-    Executa o pipeline completo E REPLICA A LÓGICA DE DECISÃO do placaController.
+    Executa o pipeline completo com fallback inteligente nos top N candidatos.
     """
-    # --- REMOVIDO: Configuração de logging ---
-
     txt_path = img_path.with_suffix('.txt')
     ground_truth = parse_ground_truth(txt_path)
     gt_text = ground_truth.get("text")
@@ -74,6 +72,7 @@ def process_single_image_e2e(img_path: Path, iou_threshold: float, blue_threshol
     if gt_text is None or gt_quad is None:
         return {"status": "no_ground_truth", "arquivo": img_path.name}
 
+    # Resultado inicial (assume falha)
     result = {
         "status": "detection_failed", "iou_score": 0.0,
         "char_errors": len(gt_text), "gt_chars": len(gt_text),
@@ -85,7 +84,7 @@ def process_single_image_e2e(img_path: Path, iou_threshold: float, blue_threshol
         if img_bgr is None:
             return {**result, "status": "read_error"}
 
-        # --- ETAPA 1: DETECÇÃO E CÁLCULO DE IoU ---
+        # --- ETAPA 1: DETECÇÃO (Como antes) ---
         preproc = Preprocessamento.executar(img_bgr)
         canny_presets = [(50, 150), (100, 200), (150, 250)]
         todos_os_contornos = []
@@ -94,62 +93,82 @@ def process_single_image_e2e(img_path: Path, iou_threshold: float, blue_threshol
             contours = Contornos.executar(edges)
             todos_os_contornos.extend(contours)
         candidatos = FiltrarContornos.executar(todos_os_contornos, img_bgr)
-        if not candidatos: return result
-        best_candidate = candidatos[0]
-        predicted_quad = best_candidate.get("quad")
-        result["iou_score"] = calculate_iou(predicted_quad, gt_quad)
 
-        # --- ETAPA 2: RECORTE, OCR E VALIDAÇÃO ---
-        crop_bgr = Recorte.executar(img_bgr, predicted_quad)
-        texto_ocr, confiancas = OCR.executarImg(crop_bgr)
-        montagem_final = Montagem.executar(texto_ocr)
-        placas_validas = Validacao.executar(montagem_final, confiancas)
+        if not candidatos:
+            return result # Mantém status "detection_failed"
 
-        if not placas_validas:
-            result["status"] = "ocr_failed"
-            result["predicted"] = montagem_final
-            result["char_errors"] = levenshtein_distance(montagem_final, gt_text)
-            return result
+        # Calcula IoU usando o candidato #1 para a métrica de detecção
+        first_candidate_quad = candidatos[0].get("quad")
+        result["iou_score"] = calculate_iou(first_candidate_quad, gt_quad)
 
-        # --- LÓGICA DE DESAMBIGUAÇÃO ADAPTATIVA (USANDO METADE SUPERIOR) ---
-        analise_cores = AnaliseCor.executar(crop_bgr)
+        # --- ETAPA 2: FALLBACK INTELIGENTE (Tenta Top 3 Candidatos) ---
         texto_final = None
+        montagem_final_primeiro_erro = "" # Guarda o texto lido no 1o erro para o CER
 
-        if len(placas_validas) == 1:
-            texto_final, _ = placas_validas[0]
-        else:
-            percent_azul_superior = analise_cores.get("percent_azul_superior", 0)
+        # Define quantos candidatos tentar (ex: 3)
+        NUM_CANDIDATOS_TENTAR = 5
 
-            # Usa o blue_threshold passado como argumento
-            if percent_azul_superior > blue_threshold:
-                for placa, padrao in placas_validas:
-                    if padrao == "MERCOSUL": texto_final = placa; break
+        for i, candidate in enumerate(candidatos[:NUM_CANDIDATOS_TENTAR]):
+            candidate_quad = candidate.get("quad")
+            if candidate_quad is None: continue # Pula se não houver quadrilátero
+
+            try:
+                crop_bgr = Recorte.executar(img_bgr, candidate_quad)
+                texto_ocr, confiancas = OCR.executarImg(crop_bgr)
+                montagem_final = Montagem.executar(texto_ocr)
+                
+                # Guarda a leitura do primeiro candidato caso todos falhem
+                if i == 0: montagem_final_primeiro_erro = montagem_final
+
+                placas_validas = Validacao.executar(montagem_final, confiancas)
+
+                if placas_validas: # Encontrou uma leitura válida!
+                    # Aplica desambiguação por cor
+                    analise_cores = AnaliseCor.executar(crop_bgr)
+                    if len(placas_validas) == 1:
+                        texto_final, _ = placas_validas[0]
+                    else:
+                        percent_azul_superior = analise_cores.get("percent_azul_superior", 0)
+                        if percent_azul_superior > blue_threshold:
+                            for placa, padrao in placas_validas:
+                                if padrao == "MERCOSUL": texto_final = placa; break
+                        else:
+                            for placa, padrao in placas_validas:
+                                if padrao == "ANTIGA": texto_final = placa; break
+                        if not texto_final:
+                            texto_final, _ = placas_validas[0] # Fallback
+
+                    # Se encontrou um texto final válido, para o loop
+                    if texto_final:
+                        break # Sai do loop for i, candidate...
+
+            except Exception as crop_ocr_error:
+                # Se o recorte ou OCR falhar para um candidato, apenas loga e tenta o próximo
+                print(f"WARN: Erro ao processar candidato {i+1} para {img_path.name}: {crop_ocr_error}")
+                continue
+
+        # --- ETAPA 3: CÁLCULO FINAL DAS MÉTRICAS ---
+        if texto_final: # Se o loop encontrou uma placa válida
+            result["predicted"] = texto_final
+            if texto_final == gt_text:
+                result["status"] = "correct"
+                result["char_errors"] = 0
             else:
-                for placa, padrao in placas_validas:
-                    if padrao == "ANTIGA": texto_final = placa; break
-
-            if not texto_final:
-                texto_final, _ = placas_validas[0]
-
-        result["predicted"] = texto_final
-
-        # --- ETAPA 3: CÁLCULO FINAL DAS MÉTRICAS (LÓGICA ESTRITA) ---
-        if texto_final == gt_text:
-            result["status"] = "correct"
-            result["char_errors"] = 0
-        else:
-            result["status"] = "incorrect"
-            result["char_errors"] = levenshtein_distance(texto_final, gt_text)
+                result["status"] = "incorrect"
+                result["char_errors"] = levenshtein_distance(texto_final, gt_text)
+        else: # Se o loop terminou sem encontrar placa válida
+            result["status"] = "ocr_failed" # Ou poderia ser "fallback_failed"
+            result["predicted"] = montagem_final_primeiro_erro # Usa a leitura do 1o para CER
+            result["char_errors"] = levenshtein_distance(montagem_final_primeiro_erro, gt_text)
 
         return result
 
     except Exception as e:
-        # Imprime erros críticos no stderr
-        # import sys # Descomente se sys não estiver importado globalmente
-        # print(f"ERRO CRÍTICO no arquivo {img_path.name}: {e}", file=sys.stderr)
+        # Erros gerais fora do loop de fallback
         return {**result, "status": "critical_error", "error": str(e)}
 
 # --- (Função run_full_pipeline_evaluation permanece a mesma da v3.3/v3.7) ---
+# ... (cole a função da versão anterior aqui) ...
 def run_full_pipeline_evaluation(args):
     print("--- Iniciando Avaliação de Pipeline Completo (Métricas Avançadas) ---")
     print(f"[INFO] Usando Blue Threshold: {args.blue_threshold:.2f}") # Informa o threshold usado
@@ -162,7 +181,7 @@ def run_full_pipeline_evaluation(args):
     if total_images == 0: print("Nenhuma imagem para processar."); return
     print(f"Total de imagens para processar: {total_images}. Usando {cpu_count()} processadores.")
     start_time = time.time()
-
+    
     # Passa o blue_threshold para a função de processamento
     partial_process_func = functools.partial(process_single_image_e2e,
                                              iou_threshold=args.iou_threshold,
@@ -188,12 +207,22 @@ def run_full_pipeline_evaluation(args):
         if status not in ["no_ground_truth", "read_error"]:
             if res.get("iou_score", 0.0) >= args.iou_threshold: correct_detections_iou += 1
             if status == "correct": correct_reads += 1
+            # Acumula erros e total de caracteres para o CER
             total_char_errors += res.get("char_errors", 0)
-            total_gt_chars += res.get("gt_chars", 0)
-            if status not in ["correct", "critical_error"]:
+            # Garante que gt_chars só seja contado se houve tentativa de leitura
+            if status != "detection_failed": 
+                total_gt_chars += res.get("gt_chars", 0)
+                
+            # Log de erros detalhado
+            if status == "incorrect":
                 error_log.append(f"Arquivo: {res['arquivo']} | Status: {status} | Esperado: {res['gt_text']} | Lido: {res.get('predicted', 'N/A')}")
+            elif status == "ocr_failed":
+                 error_log.append(f"Arquivo: {res['arquivo']} | Status: {status} | Esperado: {res['gt_text']} | Lido (inválido): {res.get('predicted', 'N/A')}")
+            elif status == "detection_failed":
+                 error_log.append(f"Arquivo: {res['arquivo']} | Status: {status} | Esperado: {res['gt_text']}")
             elif status == "critical_error":
                  error_log.append(f"Arquivo: {res['arquivo']} | Status: {status} | Erro: {res.get('error')}")
+
     e2e_accuracy = (correct_reads / total_processed) * 100 if total_processed > 0 else 0
     detection_accuracy_iou = (correct_detections_iou / total_processed) * 100 if total_processed > 0 else 0
     character_error_rate_cer = (total_char_errors / total_gt_chars) * 100 if total_gt_chars > 0 else 0
@@ -207,24 +236,25 @@ def run_full_pipeline_evaluation(args):
     print(f"2.2. Acurácia da Detecção (IoU >= {args.iou_threshold}): {correct_detections_iou}/{total_processed} ({detection_accuracy_iou:.2f}%)")
     print(f"3.3. Taxa de Erro por Caractere (CER): {total_char_errors}/{total_gt_chars} erros ({character_error_rate_cer:.2f}%)")
     print("\n--- Detalhamento das Falhas ---")
+    print(f"Leituras Corretas: {status_counts['correct']}") # Adicionado para clareza
     print(f"Leituras Incorretas (achou, mas leu errado): {status_counts['incorrect']}")
     print(f"Falhas de Detecção (não achou placa): {status_counts['detection_failed']}")
-    print(f"Falhas de OCR/Validação (achou, mas não leu texto válido): {status_counts['ocr_failed']}")
+    print(f"Falhas de OCR/Validação (não leu texto válido após fallback): {status_counts['ocr_failed']}")
     print(f"Erros Críticos (crashes no código): {status_counts['critical_error']}")
     print(f"Imagens ignoradas (sem gabarito/erro de leitura): {status_counts['no_ground_truth'] + status_counts['read_error']}")
     if args.save_log and error_log:
-        log_path = Path(f"relatorio_erros_metricas_e2e_blue_{args.blue_threshold:.2f}.txt") # Nome do log inclui o threshold
+        log_path = Path(f"relatorio_erros_metricas_e2e_fallback_blue_{args.blue_threshold:.2f}.txt") # Nome do log alterado
         with open(log_path, 'w', encoding='utf-8') as f:
-            f.write(f"--- Relatório Detalhado de Falhas (Blue Threshold: {args.blue_threshold:.2f}) ---\n\n")
+            f.write(f"--- Relatório Detalhado de Falhas (Fallback Top 3, Blue Threshold: {args.blue_threshold:.2f}) ---\n\n")
             f.writelines([f"{line}\n" for line in error_log])
         print(f"\n[INFO] Relatório detalhado de erros salvo em: '{log_path}'")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Script para avaliar a precisão do pipeline completo de ALPR.")
+    # logging.getLogger('ppocr').setLevel(logging.ERROR) # Removido - aceitamos o spam por enquanto
+    parser = argparse.ArgumentParser(description="Script para avaliar a precisão do pipeline completo de ALPR com fallback.")
     parser.add_argument("dataset_path", help="Caminho para a pasta contendo as imagens e os arquivos .txt.")
     parser.add_argument("--iou_threshold", type=float, default=0.1, help="Limiar de IoU para detecção correta. Padrão: 0.1")
-    # NOVO ARGUMENTO para testar o limiar de azul
-    parser.add_argument("--blue_threshold", type=float, default=0.10, help="Limiar de percentual azul na metade superior para classificar como Mercosul. Padrão: 0.10")
+    parser.add_argument("--blue_threshold", type=float, default=0.12, help="Limiar de azul superior para Mercosul. Padrão: 0.12") # Mantendo 0.12
     parser.add_argument("-r", "--random", type=int, metavar='N', help="Executa o teste em N imagens aleatórias.")
     parser.add_argument("--save-log", action="store_true", help="Salva um relatório detalhado das falhas.")
     args = parser.parse_args()

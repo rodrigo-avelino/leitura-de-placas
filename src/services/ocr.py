@@ -43,7 +43,7 @@ class OCR:
         reader = None
         try:
             # A instância é criada aqui, sem supressão de stderr
-            reader = PaddleOCR(use_angle_cls=True, lang='en', show_log=False)
+            reader = PaddleOCR(use_angle_cls=False, lang='en', show_log=False)
         except Exception as e:
             # import sys # Descomente se sys não estiver importado globalmente
             # print(f"ERRO ao inicializar PaddleOCR: {e}", file=sys.stderr)
