@@ -1,0 +1,321 @@
+--- Relatório Detalhado de Falhas ---
+
+Arquivo: img_004274.jpg | Status: detection_failed | Esperado: ERM3130 | Lido: 
+Arquivo: img_012169.jpg | Status: incorrect | Esperado: NRW0F55 | Lido: NRV0F55
+Arquivo: img_010975.jpg | Status: incorrect | Esperado: QRE2D62 | Lido: QRE2062
+Arquivo: img_010264.jpg | Status: ocr_failed | Esperado: MSN8A86 | Lido: SN8A86
+Arquivo: img_000853.jpg | Status: incorrect | Esperado: MQQ9406 | Lido: MQO9406
+Arquivo: img_012669.jpg | Status: incorrect | Esperado: QRG2H80 | Lido: QRG2H60
+Arquivo: img_000601.jpg | Status: detection_failed | Esperado: PPH7923 | Lido: 
+Arquivo: img_012624.jpg | Status: incorrect | Esperado: MQA3D68 | Lido: HOA3O68
+Arquivo: img_003991.jpg | Status: incorrect | Esperado: NXL8285 | Lido: NXL8205
+Arquivo: img_003036.jpg | Status: ocr_failed | Esperado: ODE4816 | Lido: 
+Arquivo: img_003841.jpg | Status: ocr_failed | Esperado: PPA3984 | Lido: 
+Arquivo: img_010860.jpg | Status: detection_failed | Esperado: PPK2H21 | Lido: 
+Arquivo: img_002751.jpg | Status: incorrect | Esperado: PPW3176 | Lido: PPH3I76
+Arquivo: img_003452.jpg | Status: detection_failed | Esperado: MTU0474 | Lido: 
+Arquivo: img_013877.jpg | Status: incorrect | Esperado: OVH8I96 | Lido: OVH8196
+Arquivo: img_011341.jpg | Status: ocr_failed | Esperado: QRC6H39 | Lido: 
+Arquivo: img_011102.jpg | Status: incorrect | Esperado: QRL7D63 | Lido: QRL7O63
+Arquivo: img_004143.jpg | Status: detection_failed | Esperado: MRP7201 | Lido: 
+Arquivo: img_011311.jpg | Status: incorrect | Esperado: MTV9H40 | Lido: HTV9H40
+Arquivo: img_004301.jpg | Status: incorrect | Esperado: ODJ7418 | Lido: OOJ7418
+Arquivo: img_002922.jpg | Status: incorrect | Esperado: PPX9828 | Lido: PPX9982
+Arquivo: img_011371.jpg | Status: detection_failed | Esperado: QRF8G02 | Lido: 
+Arquivo: img_010792.jpg | Status: incorrect | Esperado: GUP7I58 | Lido: GUP7158
+Arquivo: img_011732.jpg | Status: ocr_failed | Esperado: MTV3B31 | Lido: 
+Arquivo: img_004577.jpg | Status: incorrect | Esperado: QRB0854 | Lido: ORB0854
+Arquivo: img_004775.jpg | Status: detection_failed | Esperado: GYC7322 | Lido: 
+Arquivo: img_002017.jpg | Status: detection_failed | Esperado: MPV1368 | Lido: 
+Arquivo: img_004840.jpg | Status: incorrect | Esperado: MQN4935 | Lido: MON4935
+Arquivo: img_001380.jpg | Status: ocr_failed | Esperado: MPE2451 | Lido: MPEAS
+Arquivo: img_001186.jpg | Status: incorrect | Esperado: ODI5578 | Lido: OOI5578
+Arquivo: img_010643.jpg | Status: detection_failed | Esperado: QRK0H28 | Lido: 
+Arquivo: img_000200.jpg | Status: incorrect | Esperado: PPY2852 | Lido: PPY2B52
+Arquivo: img_003070.jpg | Status: detection_failed | Esperado: FJA8105 | Lido: 
+Arquivo: img_002796.jpg | Status: detection_failed | Esperado: PPP8761 | Lido: 
+Arquivo: img_000506.jpg | Status: incorrect | Esperado: MSV2120 | Lido: MSV2I20
+Arquivo: img_013783.jpg | Status: incorrect | Esperado: QRM4I57 | Lido: QRM4157
+Arquivo: img_003357.jpg | Status: ocr_failed | Esperado: ODS4069 | Lido: 
+Arquivo: img_002277.jpg | Status: ocr_failed | Esperado: PPX0700 | Lido: 
+Arquivo: img_001620.jpg | Status: incorrect | Esperado: QRD2985 | Lido: ORD2985
+Arquivo: img_004990.jpg | Status: ocr_failed | Esperado: OVK2611 | Lido: OVK261
+Arquivo: img_010735.jpg | Status: incorrect | Esperado: PPU6D79 | Lido: PPU6O79
+Arquivo: img_000361.jpg | Status: ocr_failed | Esperado: PPX9986 | Lido: 
+Arquivo: img_000442.jpg | Status: incorrect | Esperado: ODS3207 | Lido: OOS3207
+Arquivo: img_001327.jpg | Status: incorrect | Esperado: ODR5274 | Lido: ODR5Z74
+Arquivo: img_003553.jpg | Status: ocr_failed | Esperado: MTO4906 | Lido: 
+Arquivo: img_004779.jpg | Status: detection_failed | Esperado: MRV3523 | Lido: 
+Arquivo: img_014738.jpg | Status: incorrect | Esperado: AOH6I15 | Lido: AOH6115
+Arquivo: img_001668.jpg | Status: incorrect | Esperado: ODK0482 | Lido: OOK0482
+Arquivo: img_010876.jpg | Status: incorrect | Esperado: PPC6I49 | Lido: PPC6149
+Arquivo: img_003595.jpg | Status: detection_failed | Esperado: ODQ6655 | Lido: 
+Arquivo: img_010224.jpg | Status: ocr_failed | Esperado: PXE3F60 | Lido: 
+Arquivo: img_012581.jpg | Status: ocr_failed | Esperado: PPL1H66 | Lido: 
+Arquivo: img_000851.jpg | Status: incorrect | Esperado: PPY2924 | Lido: PPY2G24
+Arquivo: img_002815.jpg | Status: incorrect | Esperado: ODS4776 | Lido: OOS4778
+Arquivo: img_012105.jpg | Status: ocr_failed | Esperado: NYP9C89 | Lido: 
+Arquivo: img_001902.jpg | Status: ocr_failed | Esperado: MTZ9247 | Lido: 
+Arquivo: img_012556.jpg | Status: ocr_failed | Esperado: QRF3A89 | Lido: 
+Arquivo: img_011743.jpg | Status: incorrect | Esperado: NPV9I67 | Lido: NPV9167
+Arquivo: img_000452.jpg | Status: detection_failed | Esperado: GDL4498 | Lido: 
+Arquivo: img_010158.jpg | Status: incorrect | Esperado: ODL2J56 | Lido: OOO2O50
+Arquivo: img_003373.jpg | Status: detection_failed | Esperado: OVE8718 | Lido: 
+Arquivo: img_001338.jpg | Status: incorrect | Esperado: LVD0684 | Lido: LVD0G84
+Arquivo: img_010376.jpg | Status: incorrect | Esperado: QRE7D75 | Lido: QRE7O75
+Arquivo: img_000262.jpg | Status: ocr_failed | Esperado: PPW7557 | Lido: 
+Arquivo: img_012940.jpg | Status: ocr_failed | Esperado: QRF4B71 | Lido: COMUNITARIO
+Arquivo: img_013476.jpg | Status: incorrect | Esperado: QRE2D66 | Lido: QRE2O66
+Arquivo: img_012738.jpg | Status: incorrect | Esperado: QRE1I38 | Lido: QRE1138
+Arquivo: img_001427.jpg | Status: incorrect | Esperado: MQN5440 | Lido: MON5440
+Arquivo: img_004258.jpg | Status: detection_failed | Esperado: PPH2633 | Lido: 
+Arquivo: img_014113.jpg | Status: incorrect | Esperado: JSU3G64 | Lido: JSU3664
+Arquivo: img_010775.jpg | Status: ocr_failed | Esperado: QRE4E62 | Lido: 
+Arquivo: img_001389.jpg | Status: detection_failed | Esperado: PPV2861 | Lido: 
+Arquivo: img_001705.jpg | Status: detection_failed | Esperado: ODR3127 | Lido: 
+Arquivo: img_001131.jpg | Status: incorrect | Esperado: OZL8063 | Lido: OZL8O63
+Arquivo: img_013405.jpg | Status: incorrect | Esperado: PPT5C80 | Lido: PPT5C30
+Arquivo: img_012728.jpg | Status: incorrect | Esperado: QRH1H27 | Lido: QRH3H27
+Arquivo: img_001472.jpg | Status: incorrect | Esperado: ODT7297 | Lido: OOT7297
+Arquivo: img_011667.jpg | Status: ocr_failed | Esperado: QRJ1I60 | Lido: QRJ1G0
+Arquivo: img_000602.jpg | Status: ocr_failed | Esperado: PPV3999 | Lido: 
+Arquivo: img_010157.jpg | Status: incorrect | Esperado: OVL2D38 | Lido: OVL2O38
+Arquivo: img_011202.jpg | Status: detection_failed | Esperado: QRI0I59 | Lido: 
+Arquivo: img_012565.jpg | Status: incorrect | Esperado: QRF7B72 | Lido: QRF7872
+Arquivo: img_014402.jpg | Status: incorrect | Esperado: PXJ8D45 | Lido: PXJ8045
+Arquivo: img_010293.jpg | Status: incorrect | Esperado: QRI6D02 | Lido: ORI6O02
+Arquivo: img_011324.jpg | Status: detection_failed | Esperado: MPJ4J19 | Lido: 
+Arquivo: img_010550.jpg | Status: ocr_failed | Esperado: QRE4E99 | Lido: 
+Arquivo: img_010058.jpg | Status: incorrect | Esperado: PPW2G10 | Lido: PPW2610
+Arquivo: img_000535.jpg | Status: incorrect | Esperado: ODI1892 | Lido: ATE0011
+Arquivo: img_000253.jpg | Status: incorrect | Esperado: OYK7355 | Lido: OYK7359
+Arquivo: img_013406.jpg | Status: incorrect | Esperado: QRE7D29 | Lido: QRE7029
+Arquivo: img_004367.jpg | Status: detection_failed | Esperado: KWR7345 | Lido: 
+Arquivo: img_001959.jpg | Status: ocr_failed | Esperado: MPY1784 | Lido: 
+Arquivo: img_003305.jpg | Status: detection_failed | Esperado: QJK6374 | Lido: 
+Arquivo: img_013172.jpg | Status: incorrect | Esperado: EYW2E59 | Lido: EYH2E50
+Arquivo: img_003828.jpg | Status: ocr_failed | Esperado: PLG8011 | Lido: 
+Arquivo: img_011472.jpg | Status: ocr_failed | Esperado: PXT0A09 | Lido: SPXTGA09
+Arquivo: img_013258.jpg | Status: incorrect | Esperado: OXA4A92 | Lido: OXA4492
+Arquivo: img_010138.jpg | Status: incorrect | Esperado: ODA8I94 | Lido: QDA8I94
+Arquivo: img_002911.jpg | Status: ocr_failed | Esperado: ODG3065 | Lido: 
+Arquivo: img_011156.jpg | Status: ocr_failed | Esperado: OVH9J79 | Lido: 
+Arquivo: img_003764.jpg | Status: incorrect | Esperado: QUF5789 | Lido: QUF5T89
+Arquivo: img_014333.jpg | Status: incorrect | Esperado: OYD4G31 | Lido: OYD4631
+Arquivo: img_013408.jpg | Status: incorrect | Esperado: QRG2H80 | Lido: ORG2H60
+Arquivo: img_013560.jpg | Status: incorrect | Esperado: ODA6A07 | Lido: ODA6407
+Arquivo: img_001102.jpg | Status: incorrect | Esperado: QQH1738 | Lido: QQH1T38
+Arquivo: img_014225.jpg | Status: incorrect | Esperado: RIO1J55 | Lido: RIO1355
+Arquivo: img_013520.jpg | Status: incorrect | Esperado: QRG2H80 | Lido: ORG2H80
+Arquivo: img_013064.jpg | Status: incorrect | Esperado: MSL3A09 | Lido: HSL3A09
+Arquivo: img_002140.jpg | Status: incorrect | Esperado: QNA4386 | Lido: ONA4386
+Arquivo: img_011542.jpg | Status: incorrect | Esperado: ODQ8I61 | Lido: ODQ8161
+Arquivo: img_002769.jpg | Status: incorrect | Esperado: ODO9891 | Lido: SNT0O09
+Arquivo: img_013277.jpg | Status: incorrect | Esperado: ODS9B30 | Lido: OOS9830
+Arquivo: img_011519.jpg | Status: incorrect | Esperado: QRE1I14 | Lido: QRE1114
+Arquivo: img_003398.jpg | Status: detection_failed | Esperado: PPK1316 | Lido: 
+Arquivo: img_014009.jpg | Status: incorrect | Esperado: KXN5G38 | Lido: KXN5638
+Arquivo: img_011316.jpg | Status: ocr_failed | Esperado: QRG3D23 | Lido: 
+Arquivo: img_000870.jpg | Status: incorrect | Esperado: ODJ5347 | Lido: OOJ5347
+Arquivo: img_001765.jpg | Status: incorrect | Esperado: ODB8156 | Lido: OOB8156
+Arquivo: img_000372.jpg | Status: detection_failed | Esperado: PPM2187 | Lido: 
+Arquivo: img_012715.jpg | Status: ocr_failed | Esperado: QRF5A40 | Lido: QRF5A4U
+Arquivo: img_004189.jpg | Status: incorrect | Esperado: ODH8800 | Lido: OOH8800
+Arquivo: img_010758.jpg | Status: incorrect | Esperado: QRJ8D08 | Lido: QRJ8O08
+Arquivo: img_000093.jpg | Status: detection_failed | Esperado: PPJ0865 | Lido: 
+Arquivo: img_014083.jpg | Status: incorrect | Esperado: ODE0J86 | Lido: ODE0386
+Arquivo: img_011928.jpg | Status: incorrect | Esperado: PPB9G19 | Lido: PPB9619
+Arquivo: img_014177.jpg | Status: incorrect | Esperado: QOV5A73 | Lido: QOV5473
+Arquivo: img_014027.jpg | Status: incorrect | Esperado: OYD1B83 | Lido: OYD1883
+Arquivo: img_000316.jpg | Status: ocr_failed | Esperado: HOE1200 | Lido: 
+Arquivo: img_012719.jpg | Status: incorrect | Esperado: ODT7C89 | Lido: OOI7O89
+Arquivo: img_000379.jpg | Status: ocr_failed | Esperado: MRR1187 | Lido: 
+Arquivo: img_003612.jpg | Status: detection_failed | Esperado: MQV5881 | Lido: 
+Arquivo: img_004063.jpg | Status: ocr_failed | Esperado: MSY1984 | Lido: MSYAI984
+Arquivo: img_010355.jpg | Status: incorrect | Esperado: EIY8I27 | Lido: EIY8127
+Arquivo: img_001300.jpg | Status: incorrect | Esperado: OVK4839 | Lido: OVK4B39
+Arquivo: img_004257.jpg | Status: detection_failed | Esperado: MSM0040 | Lido: 
+Arquivo: img_010689.jpg | Status: incorrect | Esperado: QRF8G56 | Lido: QRF8G50
+Arquivo: img_002282.jpg | Status: detection_failed | Esperado: MRA7567 | Lido: 
+Arquivo: img_010416.jpg | Status: incorrect | Esperado: QRE4E99 | Lido: DTE4E99
+Arquivo: img_003364.jpg | Status: ocr_failed | Esperado: FPT2388 | Lido: FPT238
+Arquivo: img_004487.jpg | Status: detection_failed | Esperado: ODH9507 | Lido: 
+Arquivo: img_002577.jpg | Status: detection_failed | Esperado: ODR1856 | Lido: 
+Arquivo: img_003393.jpg | Status: incorrect | Esperado: MQJ5895 | Lido: MOJ5895
+Arquivo: img_011292.jpg | Status: incorrect | Esperado: PPK6G53 | Lido: PPK6553
+Arquivo: img_012829.jpg | Status: ocr_failed | Esperado: ODQ9D63 | Lido: Q9063
+Arquivo: img_010636.jpg | Status: detection_failed | Esperado: QRF8G01 | Lido: 
+Arquivo: img_013584.jpg | Status: incorrect | Esperado: QRE7D75 | Lido: QRE7O75
+Arquivo: img_014074.jpg | Status: incorrect | Esperado: MQE7A82 | Lido: MQE7482
+Arquivo: img_001048.jpg | Status: incorrect | Esperado: FAN0977 | Lido: FAN0G77
+Arquivo: img_003329.jpg | Status: ocr_failed | Esperado: PPX0682 | Lido: 
+Arquivo: img_011109.jpg | Status: incorrect | Esperado: PPQ6A69 | Lido: PPQ6469
+Arquivo: img_013331.jpg | Status: incorrect | Esperado: QRF8G17 | Lido: QRF8617
+Arquivo: img_014133.jpg | Status: incorrect | Esperado: OVL4D11 | Lido: OVL4011
+Arquivo: img_014491.jpg | Status: incorrect | Esperado: MTQ7B71 | Lido: MTQ7871
+Arquivo: img_014070.jpg | Status: incorrect | Esperado: OVL9G16 | Lido: OVL9616
+Arquivo: img_004278.jpg | Status: detection_failed | Esperado: ODC3575 | Lido: 
+Arquivo: img_003356.jpg | Status: detection_failed | Esperado: OVE9965 | Lido: 
+Arquivo: img_002216.jpg | Status: ocr_failed | Esperado: MSK7666 | Lido: 
+Arquivo: img_012285.jpg | Status: ocr_failed | Esperado: QRF8F14 | Lido: 
+Arquivo: img_002983.jpg | Status: detection_failed | Esperado: MTA1883 | Lido: 
+Arquivo: img_003080.jpg | Status: incorrect | Esperado: ODP0519 | Lido: OOP0519
+Arquivo: img_000680.jpg | Status: incorrect | Esperado: OCV2491 | Lido: DCV2491
+Arquivo: img_002747.jpg | Status: incorrect | Esperado: ODI1892 | Lido: AOD1189
+Arquivo: img_011761.jpg | Status: ocr_failed | Esperado: PPO2E03 | Lido: 
+Arquivo: img_001448.jpg | Status: detection_failed | Esperado: MQR8284 | Lido: 
+Arquivo: img_000553.jpg | Status: incorrect | Esperado: ODO8346 | Lido: OOO8346
+Arquivo: img_014904.jpg | Status: incorrect | Esperado: PPG7G60 | Lido: PPG7660
+Arquivo: img_000597.jpg | Status: detection_failed | Esperado: PPI7628 | Lido: 
+Arquivo: img_011588.jpg | Status: incorrect | Esperado: OQY3I22 | Lido: OQY3122
+Arquivo: img_002270.jpg | Status: ocr_failed | Esperado: OWV9793 | Lido: 
+Arquivo: img_000149.jpg | Status: incorrect | Esperado: KZG4329 | Lido: YZG4329
+Arquivo: img_004787.jpg | Status: detection_failed | Esperado: ODO5821 | Lido: 
+Arquivo: img_001503.jpg | Status: ocr_failed | Esperado: PPX5175 | Lido: 
+Arquivo: img_001101.jpg | Status: detection_failed | Esperado: PPR1476 | Lido: 
+Arquivo: img_010343.jpg | Status: ocr_failed | Esperado: QRE9J97 | Lido: 
+Arquivo: img_011611.jpg | Status: ocr_failed | Esperado: QRK8B15 | Lido: 
+Arquivo: img_003062.jpg | Status: incorrect | Esperado: ODR4042 | Lido: DDR4042
+Arquivo: img_014380.jpg | Status: incorrect | Esperado: ODF1B89 | Lido: ODF1889
+Arquivo: img_014375.jpg | Status: incorrect | Esperado: NZS5I47 | Lido: NZS5147
+Arquivo: img_001931.jpg | Status: incorrect | Esperado: PWZ0050 | Lido: PHZ0050
+Arquivo: img_001355.jpg | Status: incorrect | Esperado: PPP9897 | Lido: PPP9B97
+Arquivo: img_001097.jpg | Status: incorrect | Esperado: ODK0873 | Lido: ODK0B73
+Arquivo: img_004130.jpg | Status: incorrect | Esperado: OMA0283 | Lido: JMA0283
+Arquivo: img_003661.jpg | Status: detection_failed | Esperado: KVD6643 | Lido: 
+Arquivo: img_013208.jpg | Status: ocr_failed | Esperado: OYH7H15 | Lido: 
+Arquivo: img_000359.jpg | Status: incorrect | Esperado: PPP7808 | Lido: PEP7E04
+Arquivo: img_010248.jpg | Status: incorrect | Esperado: QRF0I37 | Lido: QRF0137
+Arquivo: img_014314.jpg | Status: incorrect | Esperado: QRE0D90 | Lido: QRE0090
+Arquivo: img_000321.jpg | Status: incorrect | Esperado: ODF0135 | Lido: OOF0135
+Arquivo: img_004154.jpg | Status: detection_failed | Esperado: FMW0839 | Lido: 
+Arquivo: img_013693.jpg | Status: ocr_failed | Esperado: PPI9C91 | Lido: BSASIUPP19C91
+Arquivo: img_010572.jpg | Status: detection_failed | Esperado: QRF8F96 | Lido: 
+Arquivo: img_011846.jpg | Status: ocr_failed | Esperado: QRF4G14 | Lido: 
+Arquivo: img_004167.jpg | Status: detection_failed | Esperado: OYG2706 | Lido: 
+Arquivo: img_013944.jpg | Status: ocr_failed | Esperado: MSE5H84 | Lido: 
+Arquivo: img_001697.jpg | Status: ocr_failed | Esperado: PPJ9301 | Lido: PPJ930
+Arquivo: img_011505.jpg | Status: ocr_failed | Esperado: QRE0J04 | Lido: 
+Arquivo: img_010533.jpg | Status: incorrect | Esperado: QRF6J36 | Lido: QRF6356
+Arquivo: img_000320.jpg | Status: detection_failed | Esperado: ODR3127 | Lido: 
+Arquivo: img_013633.jpg | Status: incorrect | Esperado: MTY6D71 | Lido: MTY6071
+Arquivo: img_004295.jpg | Status: ocr_failed | Esperado: OCZ5759 | Lido: 
+Arquivo: img_012941.jpg | Status: incorrect | Esperado: LTS8J63 | Lido: LTS8363
+Arquivo: img_004256.jpg | Status: detection_failed | Esperado: FLD1488 | Lido: 
+Arquivo: img_001976.jpg | Status: incorrect | Esperado: ODR3127 | Lido: ODR3I27
+Arquivo: img_001182.jpg | Status: ocr_failed | Esperado: MSS2308 | Lido: 
+Arquivo: img_013658.jpg | Status: ocr_failed | Esperado: PPL1H66 | Lido: PPL1H6
+Arquivo: img_014453.jpg | Status: incorrect | Esperado: PPV8G29 | Lido: PPV8629
+Arquivo: img_010756.jpg | Status: incorrect | Esperado: MRK0F05 | Lido: HRX0E05
+Arquivo: img_010523.jpg | Status: ocr_failed | Esperado: OQB6A08 | Lido: Q86A08
+Arquivo: img_003898.jpg | Status: detection_failed | Esperado: KVS9534 | Lido: 
+Arquivo: img_010683.jpg | Status: ocr_failed | Esperado: QRF8G56 | Lido: 
+Arquivo: img_002269.jpg | Status: incorrect | Esperado: OYH9062 | Lido: OYH9O62
+Arquivo: img_014048.jpg | Status: incorrect | Esperado: QRF2B49 | Lido: QRF2849
+Arquivo: img_012723.jpg | Status: ocr_failed | Esperado: QRJ5B67 | Lido: AMWAJUAMA
+Arquivo: img_013858.jpg | Status: incorrect | Esperado: ODQ6D04 | Lido: ODQ6004
+Arquivo: img_004759.jpg | Status: detection_failed | Esperado: OVL8652 | Lido: 
+Arquivo: img_003914.jpg | Status: detection_failed | Esperado: MTI4098 | Lido: 
+Arquivo: img_010135.jpg | Status: incorrect | Esperado: QRF1G27 | Lido: ORF1G27
+Arquivo: img_012296.jpg | Status: incorrect | Esperado: FMO0J18 | Lido: FHO0J18
+Arquivo: img_000284.jpg | Status: ocr_failed | Esperado: KGD4016 | Lido: 
+Arquivo: img_010221.jpg | Status: incorrect | Esperado: MQE2I45 | Lido: HQE2I45
+Arquivo: img_014131.jpg | Status: incorrect | Esperado: MTN8B36 | Lido: MTN8836
+Arquivo: img_010291.jpg | Status: incorrect | Esperado: ODI8D36 | Lido: OOI8036
+Arquivo: img_010879.jpg | Status: incorrect | Esperado: PPK3D26 | Lido: PPK3026
+Arquivo: img_011606.jpg | Status: incorrect | Esperado: PKF0A92 | Lido: PKF0492
+Arquivo: img_004605.jpg | Status: detection_failed | Esperado: OYI4952 | Lido: 
+Arquivo: img_014156.jpg | Status: incorrect | Esperado: MQM8I31 | Lido: MQM8131
+Arquivo: img_013053.jpg | Status: incorrect | Esperado: LMS9H90 | Lido: LHS9H90
+Arquivo: img_000433.jpg | Status: ocr_failed | Esperado: ODG3176 | Lido: AM0DG3176
+Arquivo: img_014418.jpg | Status: incorrect | Esperado: OVL9B72 | Lido: OVL9872
+Arquivo: img_014960.jpg | Status: incorrect | Esperado: QRI7H51 | Lido: QRI7H53
+Arquivo: img_012343.jpg | Status: ocr_failed | Esperado: JMX2H44 | Lido: 
+Arquivo: img_013048.jpg | Status: incorrect | Esperado: OVL1D36 | Lido: OVL1036
+Arquivo: img_003308.jpg | Status: detection_failed | Esperado: MSF6603 | Lido: 
+Arquivo: img_011226.jpg | Status: incorrect | Esperado: KVW6D84 | Lido: KVW6084
+Arquivo: img_014338.jpg | Status: incorrect | Esperado: QOG0B71 | Lido: QOG0871
+Arquivo: img_002725.jpg | Status: ocr_failed | Esperado: MSX2549 | Lido: 
+Arquivo: img_003915.jpg | Status: ocr_failed | Esperado: ODJ8751 | Lido: 
+Arquivo: img_000545.jpg | Status: incorrect | Esperado: PPW4039 | Lido: PPW4O39
+Arquivo: img_004132.jpg | Status: ocr_failed | Esperado: PPB6700 | Lido: PPBF700
+Arquivo: img_004029.jpg | Status: detection_failed | Esperado: OQL2458 | Lido: 
+Arquivo: img_000958.jpg | Status: ocr_failed | Esperado: HDT7386 | Lido: 
+Arquivo: img_012724.jpg | Status: detection_failed | Esperado: QRH1H27 | Lido: 
+Arquivo: img_011688.jpg | Status: incorrect | Esperado: LSV6A37 | Lido: LSV6437
+Arquivo: img_011469.jpg | Status: ocr_failed | Esperado: OCY4B99 | Lido: 
+Arquivo: img_013491.jpg | Status: detection_failed | Esperado: QRE1I40 | Lido: 
+Arquivo: img_001056.jpg | Status: incorrect | Esperado: LPC7695 | Lido: LPC7G95
+Arquivo: img_011330.jpg | Status: incorrect | Esperado: QRK3I88 | Lido: QRK3188
+Arquivo: img_004246.jpg | Status: detection_failed | Esperado: PPT5778 | Lido: 
+Arquivo: img_010142.jpg | Status: incorrect | Esperado: MQD6J75 | Lido: HOD6J29
+Arquivo: img_002940.jpg | Status: ocr_failed | Esperado: ODR3127 | Lido: 
+Arquivo: img_004896.jpg | Status: ocr_failed | Esperado: MQU1348 | Lido: 
+Arquivo: img_000818.jpg | Status: ocr_failed | Esperado: OVF0528 | Lido: OVF052R
+Arquivo: img_001713.jpg | Status: ocr_failed | Esperado: MTZ4291 | Lido: 
+Arquivo: img_014330.jpg | Status: incorrect | Esperado: QRK2A84 | Lido: QRK2484
+Arquivo: img_004358.jpg | Status: incorrect | Esperado: OVI8975 | Lido: OVI8G75
+Arquivo: img_003780.jpg | Status: detection_failed | Esperado: MTT8575 | Lido: 
+Arquivo: img_000457.jpg | Status: incorrect | Esperado: AKE0129 | Lido: AKE8012
+Arquivo: img_000289.jpg | Status: ocr_failed | Esperado: PPF9168 | Lido: 
+Arquivo: img_002065.jpg | Status: incorrect | Esperado: PPI7079 | Lido: PPO7079
+Arquivo: img_011751.jpg | Status: incorrect | Esperado: QRI3G65 | Lido: QRI3665
+Arquivo: img_002427.jpg | Status: detection_failed | Esperado: PPW7385 | Lido: 
+Arquivo: img_000179.jpg | Status: detection_failed | Esperado: PPV2861 | Lido: 
+Arquivo: img_014961.jpg | Status: ocr_failed | Esperado: KZP1H91 | Lido: 
+Arquivo: img_000236.jpg | Status: incorrect | Esperado: MQW8039 | Lido: MQN8039
+Arquivo: img_000104.jpg | Status: detection_failed | Esperado: MRO9366 | Lido: 
+Arquivo: img_004324.jpg | Status: detection_failed | Esperado: OUS1848 | Lido: 
+Arquivo: img_012676.jpg | Status: incorrect | Esperado: QRF8G17 | Lido: ORF8G17
+Arquivo: img_003161.jpg | Status: ocr_failed | Esperado: ODT6181 | Lido: 006181
+Arquivo: img_013862.jpg | Status: incorrect | Esperado: QRH2I50 | Lido: ORH2150
+Arquivo: img_004430.jpg | Status: detection_failed | Esperado: GWI1894 | Lido: 
+Arquivo: img_000139.jpg | Status: detection_failed | Esperado: OYI8894 | Lido: 
+Arquivo: img_003800.jpg | Status: detection_failed | Esperado: PPD1667 | Lido: 
+Arquivo: img_013358.jpg | Status: incorrect | Esperado: QRI1A35 | Lido: QRI1435
+Arquivo: img_014422.jpg | Status: incorrect | Esperado: QRE8B56 | Lido: QRE8856
+Arquivo: img_010985.jpg | Status: incorrect | Esperado: QRB3F96 | Lido: GRB3F96
+Arquivo: img_014040.jpg | Status: incorrect | Esperado: OCY0B60 | Lido: OCY0860
+Arquivo: img_001242.jpg | Status: ocr_failed | Esperado: MSM2979 | Lido: 
+Arquivo: img_003918.jpg | Status: detection_failed | Esperado: QQS1833 | Lido: 
+Arquivo: img_014795.jpg | Status: incorrect | Esperado: OVE9I99 | Lido: DVE9I96
+Arquivo: img_001866.jpg | Status: ocr_failed | Esperado: MTZ8488 | Lido: 
+Arquivo: img_004617.jpg | Status: detection_failed | Esperado: MQF3900 | Lido: 
+Arquivo: img_001797.jpg | Status: detection_failed | Esperado: ODR3127 | Lido: 
+Arquivo: img_012765.jpg | Status: ocr_failed | Esperado: QRJ7A99 | Lido: 
+Arquivo: img_003972.jpg | Status: incorrect | Esperado: ODS3923 | Lido: OOS3G23
+Arquivo: img_001243.jpg | Status: incorrect | Esperado: ODO9891 | Lido: OOO9891
+Arquivo: img_010189.jpg | Status: incorrect | Esperado: OYG8C87 | Lido: OVG8C87
+Arquivo: img_002957.jpg | Status: ocr_failed | Esperado: PPX5172 | Lido: 
+Arquivo: img_004318.jpg | Status: ocr_failed | Esperado: ODO2347 | Lido: 
+Arquivo: img_004115.jpg | Status: detection_failed | Esperado: OCV0179 | Lido: 
+Arquivo: img_010456.jpg | Status: incorrect | Esperado: OVE8D86 | Lido: OVE8O86
+Arquivo: img_012554.jpg | Status: ocr_failed | Esperado: ODL0F34 | Lido: 
+Arquivo: img_003667.jpg | Status: detection_failed | Esperado: PPR0808 | Lido: 
+Arquivo: img_000765.jpg | Status: incorrect | Esperado: ODT5253 | Lido: OOT5253
+Arquivo: img_004429.jpg | Status: incorrect | Esperado: QOC6984 | Lido: SLC6984
+Arquivo: img_001865.jpg | Status: incorrect | Esperado: ODE1235 | Lido: ODE1Z35
+Arquivo: img_003239.jpg | Status: incorrect | Esperado: ODP0519 | Lido: OOP0519
+Arquivo: img_014470.jpg | Status: incorrect | Esperado: NBT3A91 | Lido: NBT3491
+Arquivo: img_004866.jpg | Status: detection_failed | Esperado: OQL2352 | Lido: 
+Arquivo: img_004392.jpg | Status: ocr_failed | Esperado: QQE2608 | Lido: 2608
+Arquivo: img_014723.jpg | Status: incorrect | Esperado: PPS8G99 | Lido: PPS8699
+Arquivo: img_010819.jpg | Status: incorrect | Esperado: LNH9G59 | Lido: LNH0G50
+Arquivo: img_002606.jpg | Status: incorrect | Esperado: ODR3706 | Lido: OOR3706
+Arquivo: img_004484.jpg | Status: ocr_failed | Esperado: JGJ2547 | Lido: 
+Arquivo: img_011289.jpg | Status: incorrect | Esperado: MTB4B64 | Lido: HTB4864
+Arquivo: img_002549.jpg | Status: incorrect | Esperado: MQJ7289 | Lido: MOJ7289
+Arquivo: img_004886.jpg | Status: detection_failed | Esperado: PPB2722 | Lido: 
+Arquivo: img_004147.jpg | Status: detection_failed | Esperado: KVS9534 | Lido: 
+Arquivo: img_014400.jpg | Status: incorrect | Esperado: MRF4D33 | Lido: MRF4033
+Arquivo: img_010834.jpg | Status: detection_failed | Esperado: QRH7C17 | Lido: 
+Arquivo: img_014004.jpg | Status: incorrect | Esperado: QRL2J59 | Lido: QPL2J59
+Arquivo: img_010581.jpg | Status: ocr_failed | Esperado: LMQ6F27 | Lido: 
+Arquivo: img_013526.jpg | Status: incorrect | Esperado: MST1I91 | Lido: MST1191
+Arquivo: img_002281.jpg | Status: detection_failed | Esperado: ODH5076 | Lido: 
+Arquivo: img_004694.jpg | Status: ocr_failed | Esperado: MQT8892 | Lido: 
+Arquivo: img_000536.jpg | Status: incorrect | Esperado: ODT6482 | Lido: OOT6482
+Arquivo: img_003944.jpg | Status: detection_failed | Esperado: MQS8030 | Lido: 
+Arquivo: img_010606.jpg | Status: ocr_failed | Esperado: QRE4E99 | Lido: 
+Arquivo: img_004600.jpg | Status: incorrect | Esperado: MQO1197 | Lido: MOO1197
+Arquivo: img_010868.jpg | Status: incorrect | Esperado: QMM0E07 | Lido: ONK0E07
