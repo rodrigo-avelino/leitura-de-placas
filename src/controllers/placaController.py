@@ -1,4 +1,4 @@
-# src/controllers/placaController.py
+# src/controllers/placaController.py (Versão Final com Fallback)
 
 import cv2
 import base64
@@ -8,7 +8,7 @@ from pathlib import Path
 from io import BytesIO, BufferedReader
 from datetime import datetime
 
-# Importação dos serviços que compõem o pipeline
+# Importação dos serviços
 from src.services.preprocessamento import Preprocessamento
 from src.services.binarizacao import Binarizacao
 from src.services.bordas import Bordas
@@ -26,53 +26,56 @@ from src.services.analiseCor import AnaliseCor
 from src.models.acessoModel import TabelaAcesso
 from src.config.db import SessionLocal
 
-
-# --- Funções Auxiliares de Visualização ---
-
+# --- (Funções auxiliares _overlay_contours, _overlay_quad, _read_image_bgr permanecem iguais) ---
 def _overlay_contours(bgr, contours, color=(0, 255, 255), thickness=2):
     """ Desenha todos os contornos encontrados para depuração. """
-    if contours is None:
-        return None
+    if contours is None: return None
     out = bgr.copy()
-    try:
-        cv2.drawContours(out, contours, -1, color, thickness)
-    except Exception:
-        pass
+    try: cv2.drawContours(out, contours, -1, color, thickness)
+    except Exception: pass
     return out
-
 
 def _overlay_quad(bgr, quad, color=(0, 255, 0), thickness=2):
     """ Desenha o quadrilátero do melhor candidato. """
-    if quad is None:
-        return None
+    if quad is None: return None
     out = bgr.copy()
     q = np.asarray(quad).astype(int)
     pts = q.reshape((-1, 1, 2))
     cv2.polylines(out, [pts], isClosed=True, color=color, thickness=thickness)
     return out
 
-
 def _read_image_bgr(source: Any) -> np.ndarray:
     """ Lê uma imagem de diversas fontes e a normaliza para o formato BGR. """
     if isinstance(source, np.ndarray):
         img = source
         if img.ndim == 3 and img.shape[2] == 3:
-            return cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+            # Assume RGB e converte para BGR se tiver 3 canais
+            img_bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+            return img_bgr
+        # Se não for 3 canais, retorna como está (ex: grayscale)
         return img
 
-    if hasattr(source, "getbuffer"):
-        data = source.getbuffer()
-    elif isinstance(source, (BytesIO, BufferedReader)):
-        data = source.read()
-    elif isinstance(source, (bytes, bytearray, memoryview)):
-        data = source
+    data = None
+    if hasattr(source, "getbuffer"): data = source.getbuffer()
+    elif isinstance(source, (BytesIO, BufferedReader)): data = source.read()
+    elif isinstance(source, (bytes, bytearray, memoryview)): data = source
     elif isinstance(source, (str, Path)):
         p = Path(source)
         if not p.exists(): raise FileNotFoundError(f"Imagem {p} não encontrada")
         data = np.fromfile(str(p), dtype=np.uint8)
     else:
-        raise TypeError("Tipo de fonte de imagem não suportado.")
-    
+        # Tenta converter PIL Image se disponível
+        try:
+            from PIL import Image
+            if isinstance(source, Image.Image):
+                rgb_arr = np.array(source.convert("RGB"))
+                return cv2.cvtColor(rgb_arr, cv2.COLOR_RGB2BGR)
+        except ImportError:
+            pass # PIL não disponível, continua
+        raise TypeError(f"Tipo de fonte de imagem não suportado: {type(source)}")
+
+    if data is None: raise ValueError("Não foi possível obter dados da imagem.")
+
     n = np.frombuffer(data, dtype=np.uint8)
     img = cv2.imdecode(n, cv2.IMREAD_COLOR)
     if img is None:
@@ -90,16 +93,14 @@ class PlacaController:
             if on_update is not None:
                 on_update(delta)
 
-        # Etapa 1: Leitura e Preparação da Imagem
+        # Etapa 1: Leitura e Preparação
         img_bgr = _read_image_bgr(source_image)
         original = img_bgr.copy()
         _emit({"original": original})
 
-        # Etapa 2: Pré-processamento para Detecção de Bordas
+        # Etapas 2 e 3: Pré-processamento, Detecção de Bordas e Contornos
         preproc = Preprocessamento.executar(img_bgr)
         _emit({"preproc": preproc})
-
-        # Etapa 3: Detecção de Bordas e Contornos (Estratégia Multi-Passadas)
         canny_presets = [(50, 150), (100, 200), (150, 250)]
         todos_os_contornos = []
         mapa_de_bordas_visual = np.zeros_like(preproc)
@@ -110,67 +111,101 @@ class PlacaController:
             todos_os_contornos.extend(contours)
         _emit({"contours_overlay": _overlay_contours(original, todos_os_contornos), "bordas": mapa_de_bordas_visual})
 
-        # Etapa 4: Filtrar e Ranqueia Candidatos (Coração da Lógica de Detecção)
+        # Etapa 4: Filtrar e Ranqueia Candidatos
         candidatos = FiltrarContornos.executar(todos_os_contornos, img_bgr)
         if not candidatos:
             return { "status": "erro", "texto_final": None, "panel": panel }
-        
-        best = candidatos[0]
-        plate_bbox_overlay = _overlay_quad(original, best.get("quad"))
+
+        # Guarda o overlay do melhor candidato inicial para o painel
+        best_initial = candidatos[0]
+        plate_bbox_overlay = _overlay_quad(original, best_initial.get("quad"))
         _emit({"plate_bbox_overlay": plate_bbox_overlay})
 
-        # Etapa 5: Recorte da Placa (Colorido)
-        crop_bgr = Recorte.executar(img_bgr, best.get("quad"))
-        _emit({"plate_crop": cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2RGB)}) # Envia RGB para o painel
-        
-        # --- FLUXO DE OCR VENCEDOR ---
+        # --- NOVA LÓGICA DE FALLBACK INTELIGENTE ---
+        texto_final = None
+        crop_final_bgr = None # Guarda o crop da placa encontrada
+        NUM_CANDIDATOS_TENTAR = 5
+        blue_threshold = 0.12 # Usando o valor otimizado
 
-        # Etapa 6: OCR (usa o recorte colorido BGR diretamente)
-        texto_ocr, confiancas = OCR.executarImg(crop_bgr)
-        _emit({"ocr_text": texto_ocr})
-        
-        # Etapas de PDI (Binarização e Segmentação) apenas para VISUALIZAÇÃO
-        bin_img_pdi = Binarizacao.executar(crop_bgr)
-        chars_pdi = Segmentacao.executar(bin_img_pdi)
-        _emit({"binarizacao": bin_img_pdi, "chars": chars_pdi})
+        for i, candidate in enumerate(candidatos[:NUM_CANDIDATOS_TENTAR]):
+            candidate_quad = candidate.get("quad")
+            if candidate_quad is None: continue
 
-        # --- FLUXO DE VALIDAÇÃO E PERSISTÊNCIA ---
+            print(f"[DEBUG] Tentando candidato #{i+1}...") # Log para debug
 
-        # Etapa 7: Montagem e Validação do Texto
-        montagem_final = Montagem.executar(texto_ocr)
-        placas_validas = Validacao.executar(montagem_final, confiancas)
-        
-        # Etapa 8: Lógica de Negócio (Desempate por Cor)
-        analise_cores = AnaliseCor.executar(crop_bgr)
-        texto_final, padrao_placa = None, "INDEFINIDO"
+            try:
+                # 5. Recorte (para o candidato atual)
+                crop_bgr = Recorte.executar(img_bgr, candidate_quad)
 
-        if not placas_validas:
-            pass # Sem texto válido
-        elif len(placas_validas) == 1:
-            texto_final, padrao_placa = placas_validas[0]
-        else: 
-            percent_azul = analise_cores.get("percent_azul", 0)
-            if percent_azul > 0.05:
-                for placa, padrao in placas_validas:
-                    if padrao == "MERCOSUL": texto_final, padrao_placa = placa, padrao; break
-            else:
-                for placa, padrao in placas_validas:
-                    if padrao == "ANTIGA": texto_final, padrao_placa = placa, padrao; break
-            if not texto_final: texto_final, padrao_placa = placas_validas[0] # Fallback
+                # 6. OCR (com crop colorido)
+                texto_ocr, confiancas = OCR.executarImg(crop_bgr)
 
-        validation = { "válida": bool(texto_final), "saída": texto_final or "", "padrão": padrao_placa }
-        _emit({"validation": validation})
-        
-        # Etapa 9: Persistência no Banco
-        if texto_final:
-            img_annot = plate_bbox_overlay if plate_bbox_overlay is not None else original
-            # Converte o crop de BGR para RGB antes de salvar
-            crop_rgb_para_salvar = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2RGB)
-            Persistencia.salvar(texto_final, 1.0, original, crop_rgb_para_salvar, img_annot, data_capturada)
+                # 7. Montagem e Validação
+                montagem_final = Montagem.executar(texto_ocr)
+                placas_validas = Validacao.executar(montagem_final, confiancas)
+
+                if placas_validas: # Encontrou uma leitura válida!
+                    # 8. Desambiguação por Cor (usando o crop atual)
+                    analise_cores = AnaliseCor.executar(crop_bgr)
+                    texto_placa_escolhida = None
+                    padrao_placa_escolhida = "INDEFINIDO"
+
+                    if len(placas_validas) == 1:
+                        texto_placa_escolhida, padrao_placa_escolhida = placas_validas[0]
+                    else:
+                        percent_azul_superior = analise_cores.get("percent_azul_superior", 0)
+                        if percent_azul_superior > blue_threshold:
+                            for placa, padrao in placas_validas:
+                                if padrao == "MERCOSUL": texto_placa_escolhida, padrao_placa_escolhida = placa, padrao; break
+                        else:
+                            for placa, padrao in placas_validas:
+                                if padrao == "ANTIGA": texto_placa_escolhida, padrao_placa_escolhida = placa, padrao; break
+                        if not texto_placa_escolhida: # Fallback
+                             texto_placa_escolhida, padrao_placa_escolhida = placas_validas[0]
+
+                    # Se encontrou um texto final válido, guarda e para o loop
+                    if texto_placa_escolhida:
+                        texto_final = texto_placa_escolhida
+                        padrao_placa = padrao_placa_escolhida
+                        crop_final_bgr = crop_bgr # Guarda o crop que deu certo
+                        print(f"[INFO] Placa encontrada no candidato #{i+1}: {texto_final}")
+
+                        # Atualiza o painel PDI com os dados do candidato vencedor
+                        _emit({"plate_crop": cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2RGB)})
+                        _emit({"ocr_text": texto_ocr})
+                        bin_img_pdi = Binarizacao.executar(crop_bgr)
+                        chars_pdi = Segmentacao.executar(bin_img_pdi)
+                        _emit({"binarizacao_vencedor": bin_img_pdi, "chars": chars_pdi}) # Usando chave antiga para compatibilidade
+                        _emit({"validation": { "válida": True, "saída": texto_final, "padrão": padrao_placa }})
+
+                        break # Sai do loop for i, candidate...
+
+            except Exception as loop_error:
+                print(f"[WARN] Erro ao processar candidato #{i+1}: {loop_error}")
+                continue # Tenta o próximo candidato
+
+        # --- FIM DA LÓGICA DE FALLBACK ---
+
+        # Se o loop terminou e texto_final AINDA é None, significa que nenhum candidato funcionou
+        if texto_final is None:
+            print("[INFO] Nenhum candidato produziu uma placa válida após fallback.")
+            # Atualiza o painel com o status de falha (pode usar dados do 1o candidato se quiser)
+            _emit({"validation": { "válida": False, "saída": "", "padrão": "INDEFINIDO" }})
+            return { "status": "invalido", "texto_final": None, "panel": panel }
+
+        # --- PERSISTÊNCIA (Somente se encontrou uma placa válida) ---
+        if texto_final and crop_final_bgr is not None:
+            img_annot = _overlay_quad(original, best_initial.get("quad")) # Anota o 1o candidato detectado
+            if img_annot is None: img_annot = original # Fallback se overlay falhar
             
-        return { "status": "ok" if texto_final else "invalido", "texto_final": texto_final, "panel": panel }
+            # Converte o crop que deu certo para RGB antes de salvar
+            crop_rgb_para_salvar = cv2.cvtColor(crop_final_bgr, cv2.COLOR_BGR2RGB)
+            Persistencia.salvar(texto_final, 1.0, original, crop_rgb_para_salvar, img_annot, data_capturada)
+
+        return { "status": "ok", "texto_final": texto_final, "panel": panel }
 
 
+    # --- (Método consultarRegistros permanece o mesmo) ---
     @staticmethod
     def consultarRegistros(arg=None, data_inicio: datetime = None, data_fim: datetime = None):
         """ Consulta registros de placas no banco com filtros opcionais. """
