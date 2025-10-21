@@ -1,8 +1,9 @@
-# src/services/filtrarContornos.py
+# src/services/filtrarContornos.py (v4.1 - Guarda o Warp Colorido)
 
 import cv2
 import numpy as np
-from src.services.binarizacao import Binarizacao # Binarizacao agora é nosso "juiz" completo
+from src.services.binarizacao import Binarizacao
+from src.services.analiseCor import AnaliseCor
 
 ASPECT_PATTERNS = {
     "BR_carro_antiga": (3.08, 0.20),
@@ -12,6 +13,8 @@ ASPECT_PATTERNS = {
 
 class FiltrarContornos:
     
+    # --- (Funções faixa, ordenarPontos, aspectRatio, _calcular_score_segmentacao, 
+    #      validacaoGeometrica, _encolher_quad permanecem iguais à v4.0) ---
     @staticmethod
     def faixa(ratio: float):
         best_name, best_score = None, 0.0
@@ -41,16 +44,10 @@ class FiltrarContornos:
     @staticmethod
     def _calcular_score_segmentacao(warp_bgr):
         try:
-            # Etapa 1: Obter a MELHOR binarização possível usando nossa lógica competitiva
             img_bin = Binarizacao.executar(warp_bgr)
-            
-            # Etapa 2: Pontuar essa binarização usando o juiz detalhado
-            score = Binarizacao._avaliar_qualidade(img_bin)
-            
-            # Etapa 3: Contar os contornos para fins de debug
+            score = Binarizacao._avaliar_qualidade(img_bin) 
             contornos, _ = cv2.findContours(img_bin, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             return score, len(contornos), img_bin, contornos
-            
         except Exception:
             return 0.0, 0, np.zeros((60, 200), dtype=np.uint8), []
 
@@ -88,6 +85,7 @@ class FiltrarContornos:
     def executar(contornos, imagem_bgr):
         candidatos, gray = [], cv2.cvtColor(imagem_bgr, cv2.COLOR_BGR2GRAY)
         
+        # --- GERAÇÃO DE CANDIDATOS (Haar e Contornos) ---
         try:
             cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_russian_plate_number.xml")
             if not cascade.empty():
@@ -104,27 +102,40 @@ class FiltrarContornos:
             candidatos.append({"quad": quad, "method": "contour", "contour_ref": contour})
 
         if not candidatos: return []
+        
+        # --- PONTUAÇÃO DE CANDIDATOS (com Análise de Cor) ---
         candidatos_pontuados = []
         for cand in candidatos:
             quad, ratio, avg_w, avg_h = cand["quad"], *FiltrarContornos.aspectRatio(cand["quad"])
             pattern, ar_score = FiltrarContornos.faixa(ratio)
             if pattern is None: continue
+            
+            warp_para_score = None # Inicializa
             try:
+                # Gera o warp BGR para as análises
                 warp_para_score = cv2.warpPerspective(imagem_bgr, cv2.getPerspectiveTransform(quad, np.array([[0,0],[200,0],[200,60],[0,60]], dtype="float32")), (200, 60))
             except: continue
             
+            # --- EXECUTA AS ANÁLISES ---
             seg_score, num_chars, img_bin, char_contours = FiltrarContornos._calcular_score_segmentacao(warp_para_score)
+            analise_cores = AnaliseCor.executar(warp_para_score) 
+            
             solidity = 1.0 if cand["method"] == "haar" else cv2.contourArea(cand["contour_ref"]) / max(avg_w * avg_h, 1e-6)
             
             final_score = (ar_score * 1.0) + (seg_score * 4.0) + (solidity * 0.5)
             
             cand.update({
                 "pattern": pattern, "score": float(final_score), "score_geom": ar_score, 
-                "seg_score": seg_score, "num_chars": num_chars, "bin_image": img_bin, "char_contours": char_contours
+                "seg_score": seg_score, "num_chars": num_chars, 
+                "bin_image": img_bin, "char_contours": char_contours,
+                "analise_cores": analise_cores,
+                "warp_colorido": warp_para_score # <<< GUARDA O WARP COLORIDO
             })
             candidatos_pontuados.append(cand)
         
         if not candidatos_pontuados: return []
+        
+        # --- ORDENAÇÃO E FINALIZAÇÃO ---
         candidatos_pontuados.sort(key=lambda c: c["score"], reverse=True)
         melhor_candidato = candidatos_pontuados[0]
         melhor_candidato["quad"] = FiltrarContornos._encolher_quad(melhor_candidato["quad"], fator_encolhimento=0.02)

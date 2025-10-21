@@ -20,8 +20,8 @@ class AnaliseCor:
             hsv = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2HSV)
             
             # Faixas de azul e vermelho
-            lower_blue = np.array([95, 80, 50])
-            upper_blue = np.array([130, 255, 255])
+            lower_blue = np.array([88, 70, 60]) # H começa em 88
+            upper_blue = np.array([135, 255, 255]) # H vai até 135
             mask_blue_total = cv2.inRange(hsv, lower_blue, upper_blue)
 
             lower_red1 = np.array([0, 70, 50])

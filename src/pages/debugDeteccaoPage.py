@@ -1,4 +1,4 @@
-# src/pages/debugDeteccaoPage.py
+# src/pages/debugDeteccaoPage.py (v2.1 - Mostra Warp Colorido)
 
 import streamlit as st
 import cv2
@@ -10,7 +10,7 @@ from src.services.preprocessamento import Preprocessamento
 from src.services.bordas import Bordas
 from src.services.contornos import Contornos
 from src.services.filtrarContornos import FiltrarContornos
-from src.services.segmentacao import Segmentacao # <-- NOVA IMPORTAÇÃO
+from src.services.segmentacao import Segmentacao 
 
 def _overlay_filled_quad(image, quad, color=(0, 255, 0), alpha=0.4):
     overlay, output = image.copy(), image.copy()
@@ -63,36 +63,45 @@ def app():
         for i, cand in enumerate(candidatos[:5]):
             score = cand.get('score', 0)
             with st.expander(f"Candidato #{i+1} - Score Final: {score:.3f}"):
-                # --- INÍCIO DA NOVA SEÇÃO DE VISUALIZAÇÃO ---
-                st.write("--- Análise da Segmentação ---")
                 
-                bin_image = cand.get("bin_image")
-                if bin_image is not None and bin_image.size > 0:
-                    # Segmenta os caracteres a partir da imagem binarizada
-                    chars = Segmentacao.executar(bin_image)
-                    
-                    c1, c2 = st.columns([1, 2])
-                    with c1:
-                        st.image(bin_image, caption="1. Resultado da Binarização", use_container_width=True)
-                    
-                    with c2:
-                        if chars:
-                            # Concatena as imagens dos caracteres horizontalmente para exibição
-                            vis_chars = np.concatenate(chars, axis=1)
-                            st.image(vis_chars, caption=f"2. Caracteres Segmentados ({len(chars)})", use_container_width=True)
-                        else:
-                            st.info("Nenhum caractere foi segmentado a partir da binarização.")
-                else:
-                    st.warning("Imagem binarizada não disponível para este candidato.")
+                # --- ALTERAÇÃO AQUI: EXIBE O WARP COLORIDO ---
+                st.write("--- Análise Visual do Recorte ---")
+                warp_colorido = cand.get("warp_colorido") # Pega o warp BGR
+                bin_image = cand.get("bin_image") # Pega a binarização resultante
                 
-                # --- FIM DA NOVA SEÇÃO ---
+                c1, c2 = st.columns(2)
+                
+                with c1:
+                    if warp_colorido is not None and warp_colorido.size > 0:
+                        st.image(warp_colorido, caption="1. Recorte Colorido (Entrada)", channels="BGR", use_container_width=True)
+                    else:
+                        st.warning("Recorte colorido não disponível.")
+                
+                with c2:
+                    if bin_image is not None and bin_image.size > 0:
+                        st.image(bin_image, caption="2. Resultado da Binarização", use_container_width=True)
+                    else:
+                        st.warning("Imagem binarizada não disponível.")
+                # --- FIM DA ALTERAÇÃO ---
 
+                # --- ANÁLISE DE COR (igual a antes) ---
+                st.write("--- Análise de Cor ---")
+                analise_cores = cand.get("analise_cores")
+                if analise_cores:
+                    cols_cor = st.columns(3)
+                    cols_cor[0].metric("Azul (Total %)", f"{analise_cores.get('percent_azul', 0):.1%}")
+                    cols_cor[1].metric("Azul (Superior %)", f"{analise_cores.get('percent_azul_superior', 0):.1%}")
+                    cols_cor[2].metric("Vermelho (Total %)", f"{analise_cores.get('percent_vermelho', 0):.1%}")
+                else:
+                    st.info("Análise de cores não disponível.")
+
+                # --- DETALHES DA PONTUAÇÃO (igual a antes) ---
                 st.write("--- Detalhes da Pontuação ---")
                 detalhes = {
                     "Score Final": f"{score:.3f}",
                     "Score Geométrico": f"{cand.get('score_geom', 'N/A'):.3f}",
                     "Score de Segmentação": f"{cand.get('seg_score', 'N/A'):.3f}",
-                    "Caracteres Encontrados": cand.get('num_chars', 'N/A'),
+                    "Caracteres Encontrados (Debug)": cand.get('num_chars', 'N/A'),
                     "Método": cand.get('method', 'N/A'),
                     "Padrão de Placa": cand.get('pattern', 'N/A'),
                 }

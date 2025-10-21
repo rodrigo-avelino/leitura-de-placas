@@ -1,6 +1,5 @@
-# evaluate_full_pipeline.py (Versão 3.3 - Desambiguação Adaptativa)
+# evaluate_full_pipeline.py (Versão 3.3 - Desambiguação Adaptativa com Métricas)
 
-# ... (importações e funções helper iguais à v3.0) ...
 import argparse
 import time
 import random
@@ -11,8 +10,10 @@ from multiprocessing import Pool, cpu_count
 from tqdm import tqdm
 from shapely.geometry import Polygon
 import functools
-import logging
+# import logging  # REMOVIDO
+# import sys      # REMOVIDO
 
+# Importa todos os serviços necessários
 from src.services.preprocessamento import Preprocessamento
 from src.services.bordas import Bordas
 from src.services.contornos import Contornos
@@ -21,8 +22,9 @@ from src.services.recorte import Recorte
 from src.services.ocr import OCR
 from src.services.montagem import Montagem
 from src.services.validacao import Validacao
-from src.services.analiseCor import AnaliseCor
+from src.services.analiseCor import AnaliseCor # <<< Necessário para a desambiguação
 
+# --- (Funções levenshtein_distance, parse_ground_truth, calculate_iou permanecem iguais) ---
 def levenshtein_distance(s1: str, s2: str) -> int:
     m, n = len(s1), len(s2)
     dp = [[0] * (n + 1) for _ in range(m + 1)]
@@ -55,8 +57,15 @@ def calculate_iou(quad1: np.ndarray, quad2: np.ndarray) -> float:
         union_area = poly1.union(poly2).area
         return intersection_area / union_area if union_area > 0 else 0.0
     except Exception: return 0.0
+# --- FIM DAS FUNÇÕES HELPER ---
 
-def process_single_image_e2e(img_path: Path, iou_threshold: float) -> dict:
+
+def process_single_image_e2e(img_path: Path, iou_threshold: float, blue_threshold: float) -> dict: # Adicionado blue_threshold
+    """
+    Executa o pipeline completo E REPLICA A LÓGICA DE DECISÃO do placaController.
+    """
+    # --- REMOVIDO: Configuração de logging ---
+
     txt_path = img_path.with_suffix('.txt')
     ground_truth = parse_ground_truth(txt_path)
     gt_text = ground_truth.get("text")
@@ -76,7 +85,7 @@ def process_single_image_e2e(img_path: Path, iou_threshold: float) -> dict:
         if img_bgr is None:
             return {**result, "status": "read_error"}
 
-        # --- DETECÇÃO ---
+        # --- ETAPA 1: DETECÇÃO E CÁLCULO DE IoU ---
         preproc = Preprocessamento.executar(img_bgr)
         canny_presets = [(50, 150), (100, 200), (150, 250)]
         todos_os_contornos = []
@@ -85,16 +94,17 @@ def process_single_image_e2e(img_path: Path, iou_threshold: float) -> dict:
             contours = Contornos.executar(edges)
             todos_os_contornos.extend(contours)
         candidatos = FiltrarContornos.executar(todos_os_contornos, img_bgr)
-        if not candidatos: return result 
+        if not candidatos: return result
         best_candidate = candidatos[0]
         predicted_quad = best_candidate.get("quad")
         result["iou_score"] = calculate_iou(predicted_quad, gt_quad)
-        
-        # --- RECORTE, OCR, VALIDAÇÃO ---
+
+        # --- ETAPA 2: RECORTE, OCR E VALIDAÇÃO ---
         crop_bgr = Recorte.executar(img_bgr, predicted_quad)
         texto_ocr, confiancas = OCR.executarImg(crop_bgr)
         montagem_final = Montagem.executar(texto_ocr)
         placas_validas = Validacao.executar(montagem_final, confiancas)
+
         if not placas_validas:
             result["status"] = "ocr_failed"
             result["predicted"] = montagem_final
@@ -103,44 +113,46 @@ def process_single_image_e2e(img_path: Path, iou_threshold: float) -> dict:
 
         # --- LÓGICA DE DESAMBIGUAÇÃO ADAPTATIVA (USANDO METADE SUPERIOR) ---
         analise_cores = AnaliseCor.executar(crop_bgr)
-        texto_final = None 
-        
+        texto_final = None
+
         if len(placas_validas) == 1:
             texto_final, _ = placas_validas[0]
-        else: 
-            # USA A NOVA MÉTRICA POSICIONAL
+        else:
             percent_azul_superior = analise_cores.get("percent_azul_superior", 0)
-            
-            # Limiar para a metade superior (pode precisar de ajuste fino)
-            # Começamos com 0.10 (10% da metade superior precisa ser azul)
-            if percent_azul_superior > 0.05: 
+
+            # Usa o blue_threshold passado como argumento
+            if percent_azul_superior > blue_threshold:
                 for placa, padrao in placas_validas:
                     if padrao == "MERCOSUL": texto_final = placa; break
-            else: # Se não tem azul em cima, procura a Antiga
+            else:
                 for placa, padrao in placas_validas:
                     if padrao == "ANTIGA": texto_final = placa; break
-            
-            if not texto_final: # Fallback se a lógica de cor falhar
-                texto_final, _ = placas_validas[0] 
-        
+
+            if not texto_final:
+                texto_final, _ = placas_validas[0]
+
         result["predicted"] = texto_final
-        
-        # --- CÁLCULO FINAL DAS MÉTRICAS ---
+
+        # --- ETAPA 3: CÁLCULO FINAL DAS MÉTRICAS (LÓGICA ESTRITA) ---
         if texto_final == gt_text:
             result["status"] = "correct"
             result["char_errors"] = 0
         else:
             result["status"] = "incorrect"
             result["char_errors"] = levenshtein_distance(texto_final, gt_text)
-            
+
         return result
 
     except Exception as e:
+        # Imprime erros críticos no stderr
+        # import sys # Descomente se sys não estiver importado globalmente
+        # print(f"ERRO CRÍTICO no arquivo {img_path.name}: {e}", file=sys.stderr)
         return {**result, "status": "critical_error", "error": str(e)}
 
-# --- (Função run_full_pipeline_evaluation permanece a mesma da v3.2) ---
+# --- (Função run_full_pipeline_evaluation permanece a mesma da v3.3/v3.7) ---
 def run_full_pipeline_evaluation(args):
     print("--- Iniciando Avaliação de Pipeline Completo (Métricas Avançadas) ---")
+    print(f"[INFO] Usando Blue Threshold: {args.blue_threshold:.2f}") # Informa o threshold usado
     dataset_dir = Path(args.dataset_path)
     image_files = list(dataset_dir.glob('*.jpg')) + list(dataset_dir.glob('*.jpeg')) + list(dataset_dir.glob('*.png'))
     if args.random:
@@ -150,7 +162,11 @@ def run_full_pipeline_evaluation(args):
     if total_images == 0: print("Nenhuma imagem para processar."); return
     print(f"Total de imagens para processar: {total_images}. Usando {cpu_count()} processadores.")
     start_time = time.time()
-    partial_process_func = functools.partial(process_single_image_e2e, iou_threshold=args.iou_threshold)
+
+    # Passa o blue_threshold para a função de processamento
+    partial_process_func = functools.partial(process_single_image_e2e,
+                                             iou_threshold=args.iou_threshold,
+                                             blue_threshold=args.blue_threshold)
     results = []
     with Pool(processes=cpu_count()) as pool:
         for result in tqdm(pool.imap_unordered(partial_process_func, image_files), total=total_images, desc="Processando Imagens"):
@@ -158,6 +174,8 @@ def run_full_pipeline_evaluation(args):
     end_time = time.time()
     total_time = end_time - start_time
     total_processed = len(results)
+
+    # --- (A parte de análise e exibição de métricas permanece idêntica) ---
     latency_avg = total_time / total_processed if total_processed > 0 else 0
     throughput_fps = total_processed / total_time if total_time > 0 else 0
     correct_reads, correct_detections_iou = 0, 0
@@ -195,19 +213,20 @@ def run_full_pipeline_evaluation(args):
     print(f"Erros Críticos (crashes no código): {status_counts['critical_error']}")
     print(f"Imagens ignoradas (sem gabarito/erro de leitura): {status_counts['no_ground_truth'] + status_counts['read_error']}")
     if args.save_log and error_log:
-        log_path = Path("relatorio_erros_metricas_e2e.txt")
+        log_path = Path(f"relatorio_erros_metricas_e2e_blue_{args.blue_threshold:.2f}.txt") # Nome do log inclui o threshold
         with open(log_path, 'w', encoding='utf-8') as f:
-            f.write("--- Relatório Detalhado de Falhas ---\n\n")
+            f.write(f"--- Relatório Detalhado de Falhas (Blue Threshold: {args.blue_threshold:.2f}) ---\n\n")
             f.writelines([f"{line}\n" for line in error_log])
         print(f"\n[INFO] Relatório detalhado de erros salvo em: '{log_path}'")
 
 if __name__ == "__main__":
-    logging.getLogger('ppocr').setLevel(logging.ERROR)
     parser = argparse.ArgumentParser(description="Script para avaliar a precisão do pipeline completo de ALPR.")
-    parser.add_argument("dataset_path", help="Caminho para a pasta contendo as imagens e os arquivos .txt. Ex: '/home/rodrigo/Área de Trabalho/fotos_dataset_juntas'")
-    parser.add_argument("--iou_threshold", type=float, default=0.1, help="Limiar de IoU para considerar uma detecção como 'correta'. Padrão: 0.1")
-    parser.add_argument("-r", "--random", type=int, metavar='N', help="Executa o teste em uma amostra de N imagens aleatórias.")
-    parser.add_argument("--save-log", action="store_true", help="Salva um relatório detalhado de todas as falhas em um arquivo de texto.")
+    parser.add_argument("dataset_path", help="Caminho para a pasta contendo as imagens e os arquivos .txt.")
+    parser.add_argument("--iou_threshold", type=float, default=0.1, help="Limiar de IoU para detecção correta. Padrão: 0.1")
+    # NOVO ARGUMENTO para testar o limiar de azul
+    parser.add_argument("--blue_threshold", type=float, default=0.10, help="Limiar de percentual azul na metade superior para classificar como Mercosul. Padrão: 0.10")
+    parser.add_argument("-r", "--random", type=int, metavar='N', help="Executa o teste em N imagens aleatórias.")
+    parser.add_argument("--save-log", action="store_true", help="Salva um relatório detalhado das falhas.")
     args = parser.parse_args()
     if args.iou_threshold != 0.1: print(f"[INFO] Usando IoU Threshold: {args.iou_threshold}")
     else: print(f"[INFO] Usando IoU Threshold padrão otimizado: 0.1")
