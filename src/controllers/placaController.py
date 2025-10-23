@@ -234,6 +234,7 @@ class PlacaController:
                 if r.plate_crop_image:
                     img_b64 = "data:image/png;base64," + base64.b64encode(r.plate_crop_image).decode("utf-8")
                 out.append({
+                    "id": r.id,
                     "placa": r.plate_text,
                     "data": r.created_at.strftime("%Y-%m-%d %H:%M:%S"),
                     "imagem": img_b64,
@@ -242,5 +243,29 @@ class PlacaController:
         except Exception as e:
             print(f"[ERRO] Erro ao consultar registros: {e}")
             return []
+        finally:
+            db.close()
+
+    @staticmethod
+    def excluirRegistro(registro_id: Any) -> bool:
+        db = SessionLocal()
+        try:
+            if registro_id is None:
+                return False
+                
+            # Busca o registro pelo ID (que agora virá do r.id do banco)
+            registro = db.query(TabelaAcesso).filter(TabelaAcesso.id == registro_id).first()
+
+            if registro:
+                db.delete(registro)
+                db.commit()
+                # ... (prints e return True)
+                return True
+            # ... (else e return False)
+            return False
+        except Exception as e:
+            db.rollback()
+            # ... (prints de erro e return False)
+            return False
         finally:
             db.close()

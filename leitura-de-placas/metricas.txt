@@ -1,0 +1,43 @@
+1. Métricas de Desempenho (Velocidade)
+
+1.1. Latência Média por Imagem
+
+O que mede: O tempo médio, em segundos, que o sistema leva para processar uma única imagem, desde o input até a apresentação do resultado final. Esta é a principal métrica para avaliar a experiência do usuário.
+
+Como medir: Tempo Total de Processamento / Número Total de Imagens.
+
+Unidade: Segundos por imagem.
+
+1.2. Frames Por Segundo (FPS)
+
+O que mede: O número de imagens que o sistema consegue processar por segundo. É o inverso da latência e uma métrica padrão da indústria para avaliar o throughput de sistemas de visão computacional, especialmente com foco em futuras aplicações de vídeo.
+
+Como medir: Número Total de Imagens / Tempo Total de Processamento.
+
+Unidade: Frames por segundo (FPS).
+
+2. Métricas de Precisão (Qualidade)
+
+2.1. Acurácia End-to-End
+
+O que mede: A métrica de sucesso mais importante do sistema. Representa a percentagem de imagens para as quais o sistema conseguiu detectar, recortar e ler a placa 100% corretamente, do início ao fim do pipeline.
+
+Como medir: comparar o resultado final do pipeline com o gabarito de cada imagem.
+
+Métrica: (Total de Placas Lidas Corretamente / Total de Imagens no Dataset) * 100.
+
+2.2. Acurácia da Detecção e Recorte
+
+O que mede: Avalia a precisão da primeira metade do pipeline: a capacidade de encontrar a placa na imagem. Esta métrica nos permite isolar se os erros do sistema vêm da etapa de localização ou da etapa de leitura.
+
+Como medir: S Um recorte será considerado "correto" se a sua sobreposição com o recorte do gabarito, medida pela métrica IoU (Intersection over Union), for superior a um limiar pré-definido (ex: 50% ou 0.5).
+
+Métrica: (Total de Recortes Corretos / Total de Imagens no Dataset) * 100.
+
+3.3. Taxa de Erro por Caractere (Character Error Rate - CER)
+
+O que mede: Uma avaliação granular da performance do motor de OCR. Em vez de apenas classificar uma placa como "certa" ou "errada", o CER mede o percentual de caracteres individuais que foram lidos incorretamente (substituídos, inseridos ou omitidos) em todo o dataset.
+
+Como medir: Para cada placa lida incorretamente pelo calcula-se a "distância de edição" entre o resultado e o gabarito. O CER final é a soma de todos esses erros de caractere, dividida pelo número total de caracteres em todas as placas do gabarito.
+
+Métrica: (Total de Caracteres Errados / Total de Caracteres no Dataset) * 100.
