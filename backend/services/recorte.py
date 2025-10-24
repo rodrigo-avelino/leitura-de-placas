@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-
+# aqui vamos fazer o recorte da placa da imagem original usando transformação de perspectiva
 class Recorte:
     @staticmethod
     def executar(imagem_bgr, quad):

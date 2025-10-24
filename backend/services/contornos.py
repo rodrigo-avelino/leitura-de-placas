@@ -1,5 +1,5 @@
 import cv2
-
+# Classe para detecção de contornos em uma imagem binária para encontrar regiões candidatas a placas de veículos
 class Contornos:
     @staticmethod
     def executar(img_edges):

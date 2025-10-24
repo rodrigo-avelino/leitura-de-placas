@@ -18,7 +18,7 @@ from src.config.db import SessionLocal
 from src.models.acessoModel import TabelaAcesso
 
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parents[1]  # pasta backend
 UPLOAD_DIR = BASE_DIR / "static" / "uploads"
 ANNOTATED_DIR = BASE_DIR / "static" / "annotated"
 CROP_DIR = BASE_DIR / "static" / "crops"
@@ -26,6 +26,11 @@ CROP_DIR = BASE_DIR / "static" / "crops"
 for d in [UPLOAD_DIR, ANNOTATED_DIR, CROP_DIR]:
     d.mkdir(parents=True, exist_ok=True)
 
+print("📁 Diretório base:", BASE_DIR)
+print("📂 Uploads:", UPLOAD_DIR)
+
+for d in [UPLOAD_DIR, ANNOTATED_DIR, CROP_DIR]:
+    d.mkdir(parents=True, exist_ok=True)
 
 class PlacaController:
 
@@ -39,23 +44,33 @@ class PlacaController:
 
         # 1) Carregar
         img_bgr = cv2.imread(str(caminho))
-        resultados["original"] = img_bgr
+        # NÃO adicione imagens ao resultado que será retornado como JSON
+        # resultados["original"] = img_bgr
 
         # 2) Pré-processamento
         img_prep = Preprocessamento.executar(img_bgr)
-        resultados["preprocessamento"] = img_prep
+        # resultados["preprocessamento"] = img_prep
 
         # 3) Bordas
         img_bordas = Bordas.executar(img_prep)
-        resultados["bordas"] = img_bordas
+        # resultados["bordas"] = img_bordas
 
         # 4) Contornos
         conts = Contornos.executar(img_bordas)
-        resultados["contornos"] = conts
+        resultados["num_contornos"] = len(conts)  # apenas números, não arrays
 
         # 5) Filtrar
         candidatos = FiltrarContornos.executar(conts, img_bgr)
-        resultados["candidatos"] = candidatos
+        # Remover dados não serializáveis dos candidatos
+        candidatos_json = []
+        for c in candidatos:
+            candidatos_json.append({
+                "tipo": c.get("tipo"),
+                "score": c.get("score"),
+                "aspect_ratio": c.get("aspect_ratio"),
+                "metodo": c.get("metodo")
+            })
+        resultados["candidatos"] = candidatos_json
 
         if not candidatos:
             return {"status": "erro", "mensagem": "Nenhuma placa encontrada", "etapas": resultados}
@@ -63,15 +78,15 @@ class PlacaController:
         # 6) Recorte
         best = candidatos[0]
         crop_rgb = Recorte.executar(img_bgr, best["quad"])
-        resultados["recorte"] = crop_rgb
+        # resultados["recorte"] = crop_rgb
 
         # 7) Binarização
         bin_img = Binarizacao.executar(crop_rgb)
-        resultados["binarizacao"] = bin_img
+        # resultados["binarizacao"] = bin_img
 
         # 8) Segmentação
         chars = Segmentacao.executar(bin_img)
-        resultados["segmentacao"] = chars
+        resultados["num_caracteres"] = len(chars)  # apenas contagem
 
         # 9) OCR (placa inteira + por caracteres)
         texto_raw = OCR.executarImg(crop_rgb)
@@ -94,7 +109,7 @@ class PlacaController:
                 score=1.0,
                 img_source=img_bgr,
                 img_crop=crop_rgb,
-                img_annot=img_bgr  # ou a imagem anotada com retângulo, se você gerar
+                img_annot=img_bgr
             )
             status = "ok"
         else:
