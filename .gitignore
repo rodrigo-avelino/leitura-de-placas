@@ -1,4 +1,4 @@
-# Byte-compiled / optimized / DLL files
+# Byte-compiled / optimized / DLL files (Python - Geral)
 __pycache__/
 *.py[cod]
 *$py.class
@@ -6,7 +6,7 @@ __pycache__/
 # C extensions
 *.so
 
-# Distribution / packaging
+# Distribution / packaging (Python - Geral)
 .Python
 build/
 develop-eggs/
@@ -29,23 +29,15 @@ var/
 pip-log.txt
 pip-delete-this-directory.txt
 
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
+# --- AMBIENTES VIRTUAIS (Python) ---
+backend/venv/
+backend/env/
+ENV/
+env/
+env.bak/
+venv.bak/
 
-*.mo
-*.pot
-
-*.log
+# Arquivos Django
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
@@ -59,37 +51,49 @@ docs/_build/
 
 target/
 
+# IPython Notebooks
 .ipynb_checkpoints
 
 profile_default/
 ipython_config.py
 
+# Dependency Managers (Python)
 .python-version
-
 Pipfile.lock
-
 poetry.lock
 
+# TypeScript/Linting Caches
 .mypy_cache/
 .dmypy.json
 dmypy.json
 
+# IDE/OS Generated Files
 .vscode/
-
 .DS_Store
-
 Thumbs.db
 ehthumbs.db
 Desktop.ini
-
 ~$*
 *.tmp
 
+# Environment variables
 .env
 .env.*
 
-venv/
-ENV/
-env/
-env.bak/
-venv.bak/
+
+
+# 1. Dependências do Node.js (Node Modules)
+frontend/node_modules/
+
+# 2. Arquivos de Lock
+frontend/package-lock.json
+frontend/npm-debug.log
+frontend/yarn.lock
+
+# 3. Arquivos de Build/Compilação (Vite/React)
+frontend/dist/
+frontend/out/
+
+# 4. Outros arquivos de cache/logs (ex: logs do Vite)
+frontend/.vite-press/cache
+frontend/vite-debug.log*
