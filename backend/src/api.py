@@ -23,3 +23,5 @@ app.mount("/static", StaticFiles(directory="src/static"), name="static")
 def home():
     print("API ALPR está ativa!")
     return {"mensagem": "API ALPR está ativa!"}
+
+#lanca um uvicorn src.api:app --reload para inicializar a api 
