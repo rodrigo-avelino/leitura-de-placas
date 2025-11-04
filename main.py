@@ -11,10 +11,11 @@ import base64
 import io
 import sys
 import asyncio
+from contextlib import asynccontextmanager # <<< 1. IMPORTAR CONTEXTLIB
 
 # Importa o seu controller e serviços
 from src.controllers.placaController import PlacaController
-from src.config.db import criarTabela
+from src.config.db import criarTabela # Importa a função de criar tabela
 
 # --- Modelos Pydantic (Tipagem da API) ---
 class RegistroResponse(pydantic.BaseModel):
@@ -26,7 +27,7 @@ class RegistroResponse(pydantic.BaseModel):
 class HealthCheck(pydantic.BaseModel):
     status: str
 
-# --- Função Auxiliar de Codificação (Sem alterações) ---
+# --- (Função Auxiliar de Codificação - Sem alterações) ---
 def _encode_image_to_base64(image_array: np.ndarray) -> str:
     if image_array is None or image_array.size == 0:
         return None
@@ -43,26 +44,45 @@ def _encode_image_to_base64(image_array: np.ndarray) -> str:
         print(f"Erro ao codificar imagem: {e}", file=sys.stderr)
         return None
 
-# --- Inicialização do App FastAPI (Sem alterações) ---
+# --- 2. DEFINIR O NOVO GERENCIADOR LIFESPAN ---
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Código a ser executado ANTES da API iniciar (startup)
+    print("Iniciando API e verificando banco de dados...")
+    criarTabela()
+    print("Banco de dados pronto.")
+    
+    yield # Este é o ponto onde a API fica online e rodando
+    
+    # Código a ser executado APÓS a API parar (shutdown)
+    print("API desligada.")
+
+# --- 3. INICIALIZAR O APP FASTAPI COM O LIFESPAN ---
 app = FastAPI(
     title="API de ALPR",
     description="Processa e consulta placas de veículos.",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan # <<< Passa a função de lifespan aqui
 )
+
+# Configuração do CORS (Sem alterações)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-@app.on_event("startup")
-def on_startup():
-    print("Iniciando API e verificando banco de dados...")
-    criarTabela()
-    print("Banco de dados pronto.")
 
-# --- Endpoints da API (Sem alterações) ---
+# --- 4. REMOVER O ANTIGO EVENTO DE STARTUP ---
+# @app.on_event("startup") # <<< REMOVA ESTA LINHA
+# def on_startup(): # <<< REMOVA ESTA FUNÇÃO
+#     print("Iniciando API e verificando banco de dados...")
+#     criarTabela()
+#     print("Banco de dados pronto.")
+
+# --- (Todos os seus endpoints: @app.get("/"), @app.get("/api/v1/registros"), 
+#      e @app.websocket("/ws/processar-imagem") permanecem EXATAMENTE IGUAIS) ---
 @app.get("/", response_model=HealthCheck)
 def read_root():
     return {"status": "API de ALPR online"}
@@ -79,23 +99,15 @@ async def consultar_registros(
     registros = await run_in_threadpool(PlacaController.consultarRegistros, arg=filtros)
     return registros
 
-# --- ENDPOINT WEBSOCKET (CORRIGIDO) ---
 @app.websocket("/ws/processar-imagem")
 async def processar_imagem_ws(websocket: WebSocket):
-    # 1. CORREÇÃO: Remove 'max_size' de accept()
-    await websocket.accept() 
-    
+    await websocket.accept()
     main_event_loop = asyncio.get_running_loop()
-
     try:
-        # 2. CORREÇÃO: Remove 'max_size' de receive_bytes()
-        # O limite padrão de 1MB é suficiente para o upload da imagem
         image_bytes = await websocket.receive_bytes() 
-        
         data_capturada = datetime.utcnow()
         await websocket.send_json({"step": "start", "message": "Imagem recebida, iniciando processamento..."})
 
-        # (Função interna 'send_update_to_client' - Sem alterações)
         async def send_update_to_client(delta: dict):
             encoded_delta = delta.copy()
             if delta.get("step") == "candidates_found" and "data" in delta:
@@ -109,14 +121,12 @@ async def processar_imagem_ws(websocket: WebSocket):
                 encoded_delta["image"] = _encode_image_to_base64(delta["image"])
             await websocket.send_json(encoded_delta)
 
-        # (Função interna 'on_update_sync_callback' - Sem alterações)
         def on_update_sync_callback(delta: dict):
             asyncio.run_coroutine_threadsafe(
                 send_update_to_client(delta),
                 main_event_loop
             )
 
-        # (Execução do pipeline - Sem alterações)
         final_result = await run_in_threadpool(
             PlacaController.processarImagem,
             source_image=io.BytesIO(image_bytes),
@@ -124,15 +134,12 @@ async def processar_imagem_ws(websocket: WebSocket):
             on_update=on_update_sync_callback
         )
         
-        # (Envio do resultado final - Sem alterações)
         await websocket.send_json({
             "step": "final_result", 
             "status": final_result.get("status"),
             "texto_final": final_result.get("texto_final"),
             "padrao_placa": final_result.get("padrao_placa")
         })
-
-        # (Correção da race condition - Sem alterações)
         await websocket.close()
 
     except WebSocketDisconnect:
@@ -144,5 +151,8 @@ async def processar_imagem_ws(websocket: WebSocket):
             await websocket.close()
         except:
             pass 
-    # finally:
-        # (bloco 'finally' removido)
+
+# --- (Ponto de entrada - Sem alterações) ---
+if __name__ == "__main__":
+    print("Iniciando servidor Uvicorn em http://127.0.0.1:8000")
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
