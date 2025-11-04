@@ -1,5 +1,5 @@
 import uvicorn
-from fastapi import FastAPI, WebSocket, File, UploadFile, Depends, Query, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, File, UploadFile, Depends, Query, WebSocketDisconnect, Response, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.concurrency import run_in_threadpool
 from datetime import datetime, date
@@ -26,7 +26,7 @@ class RegistroResponse(pydantic.BaseModel):
 class HealthCheck(pydantic.BaseModel):
     status: str
 
-# --- Função Auxiliar de Codificação (Sem alterações) ---
+# --- Função Auxiliar de Codificação ---
 def _encode_image_to_base64(image_array: np.ndarray) -> str:
     if image_array is None or image_array.size == 0:
         return None
@@ -43,7 +43,7 @@ def _encode_image_to_base64(image_array: np.ndarray) -> str:
         print(f"Erro ao codificar imagem: {e}", file=sys.stderr)
         return None
 
-# --- Inicialização do App FastAPI (Sem alterações) ---
+# --- Inicialização do App FastAPI ---
 app = FastAPI(
     title="API de ALPR",
     description="Processa e consulta placas de veículos.",
@@ -62,7 +62,7 @@ def on_startup():
     criarTabela()
     print("Banco de dados pronto.")
 
-# --- Endpoints da API (Sem alterações) ---
+# --- Endpoints GET e Consulta ---
 @app.get("/", response_model=HealthCheck)
 def read_root():
     return {"status": "API de ALPR online"}
@@ -79,23 +79,36 @@ async def consultar_registros(
     registros = await run_in_threadpool(PlacaController.consultarRegistros, arg=filtros)
     return registros
 
-# --- ENDPOINT WEBSOCKET (CORRIGIDO) ---
+# --- NOVO ENDPOINT DE EXCLUSÃO (DELETE) ---
+@app.delete("/api/v1/registros/{registro_id}", status_code=204) # 204 No Content
+async def deletar_registro(registro_id: int):
+    """
+    Exclui um registro de placa pelo seu ID.
+    """
+    # Executa a função de exclusão no controller em um thread pool
+    sucesso = await run_in_threadpool(PlacaController.deletarRegistro, id=registro_id)
+    
+    if not sucesso:
+        # Se o PlacaController retornar False, o registro não foi encontrado
+        raise HTTPException(status_code=404, detail=f"Registro ID {registro_id} não encontrado.")
+    
+    # Retorna status 204 (No Content), que significa sucesso na exclusão
+    return Response(status_code=204)
+
+
+# --- ENDPOINT WEBSOCKET ---
 @app.websocket("/ws/processar-imagem")
 async def processar_imagem_ws(websocket: WebSocket):
-    # 1. CORREÇÃO: Remove 'max_size' de accept()
     await websocket.accept() 
     
     main_event_loop = asyncio.get_running_loop()
 
     try:
-        # 2. CORREÇÃO: Remove 'max_size' de receive_bytes()
-        # O limite padrão de 1MB é suficiente para o upload da imagem
         image_bytes = await websocket.receive_bytes() 
         
         data_capturada = datetime.utcnow()
         await websocket.send_json({"step": "start", "message": "Imagem recebida, iniciando processamento..."})
 
-        # (Função interna 'send_update_to_client' - Sem alterações)
         async def send_update_to_client(delta: dict):
             encoded_delta = delta.copy()
             if delta.get("step") == "candidates_found" and "data" in delta:
@@ -109,14 +122,12 @@ async def processar_imagem_ws(websocket: WebSocket):
                 encoded_delta["image"] = _encode_image_to_base64(delta["image"])
             await websocket.send_json(encoded_delta)
 
-        # (Função interna 'on_update_sync_callback' - Sem alterações)
         def on_update_sync_callback(delta: dict):
             asyncio.run_coroutine_threadsafe(
                 send_update_to_client(delta),
                 main_event_loop
             )
 
-        # (Execução do pipeline - Sem alterações)
         final_result = await run_in_threadpool(
             PlacaController.processarImagem,
             source_image=io.BytesIO(image_bytes),
@@ -124,7 +135,6 @@ async def processar_imagem_ws(websocket: WebSocket):
             on_update=on_update_sync_callback
         )
         
-        # (Envio do resultado final - Sem alterações)
         await websocket.send_json({
             "step": "final_result", 
             "status": final_result.get("status"),
@@ -132,7 +142,6 @@ async def processar_imagem_ws(websocket: WebSocket):
             "padrao_placa": final_result.get("padrao_placa")
         })
 
-        # (Correção da race condition - Sem alterações)
         await websocket.close()
 
     except WebSocketDisconnect:
@@ -143,6 +152,4 @@ async def processar_imagem_ws(websocket: WebSocket):
             await websocket.send_json({"step": "error", "message": f"Erro interno no servidor: {e}"})
             await websocket.close()
         except:
-            pass 
-    # finally:
-        # (bloco 'finally' removido)
+            pass

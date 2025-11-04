@@ -1,4 +1,4 @@
-# src/controllers/placaController.py (v1.2 - Com Eventos Visuais Ricos)
+# src/controllers/placaController.py (v1.3 - Com DELETE)
 
 import cv2
 import base64
@@ -7,7 +7,7 @@ from typing import Any
 from pathlib import Path
 from io import BytesIO, BufferedReader
 from datetime import datetime
-import sys # Para logs de erro
+import sys 
 
 # Importação dos serviços
 from src.services.preprocessamento import Preprocessamento
@@ -16,7 +16,7 @@ from src.services.bordas import Bordas
 from src.services.contornos import Contornos
 from src.services.filtrarContornos import FiltrarContornos
 from src.services.recorte import Recorte
-from src.services.segmentacao import Segmentacao # <<< Importado
+from src.services.segmentacao import Segmentacao 
 from src.services.ocr import OCR
 from src.services.montagem import Montagem
 from src.services.validacao import Validacao
@@ -27,7 +27,10 @@ from src.services.analiseCor import AnaliseCor
 from src.models.acessoModel import TabelaAcesso
 from src.config.db import SessionLocal
 
-# --- Funções Auxiliares de Visualização ---
+# 💡 Novo import necessário para a exclusão
+from sqlalchemy import delete 
+
+# --- Funções Auxiliares de Visualização (Sem alterações) ---
 
 def _overlay_contours(bgr, contours, color=(0, 255, 255), thickness=2):
     """ Desenha todos os contornos encontrados para depuração. """
@@ -46,7 +49,6 @@ def _overlay_quad(bgr, quad, color=(0, 255, 0), thickness=2):
     cv2.polylines(out, [pts], isClosed=True, color=color, thickness=thickness)
     return out
 
-# --- NOVA FUNÇÃO HELPER (COPIADA DO DEBUG) ---
 def _overlay_filled_quad(image, quad, color=(0, 255, 0), alpha=0.4):
     """ Desenha um quadrilátero preenchido e semi-transparente. """
     overlay = image.copy()
@@ -55,8 +57,6 @@ def _overlay_filled_quad(image, quad, color=(0, 255, 0), alpha=0.4):
     cv2.fillPoly(overlay, [pts], color)
     cv2.addWeighted(overlay, alpha, output, 1 - alpha, 0, output)
     return output
-# --- FIM DA NOVA FUNÇÃO HELPER ---
-
 
 def _read_image_bgr(source: Any) -> np.ndarray:
     """ Lê uma imagem de diversas fontes e a normaliza para o formato BGR. """
@@ -95,6 +95,7 @@ class PlacaController:
 
     @staticmethod
     def processarImagem(source_image: Any, data_capturada: datetime, on_update=None):
+        # ... (Método processarImagem - Não alterado)
         panel = {}
         def _emit(delta: dict):
             panel.update(delta)
@@ -129,7 +130,7 @@ class PlacaController:
         # --- NOVO EVENTO: ENVIAR TOP 5 CANDIDATOS OVERLAY ---
         try:
             overlay_top5 = original.copy()
-            cores = [(0, 255, 0), (0, 255, 255), (255, 0, 0), (255, 0, 255), (255, 255, 0)] # Verde, Amarelo, Azul, Magenta, Ciano
+            cores = [(0, 255, 0), (0, 255, 255), (255, 0, 0), (255, 0, 255), (255, 255, 0)] 
             
             # Desenha do #5 para o #1 (para que #1 fique por cima)
             for i, cand in reversed(list(enumerate(candidatos[:5]))):
@@ -153,7 +154,6 @@ class PlacaController:
                 "score": cand.get('score'),
                 "seg_score": cand.get('seg_score'),
                 "cores": cand.get('analise_cores'),
-                # A imagem já foi enviada no evento 'top_5_overlay' e no 'warp_colorido'
             })
         _emit({"step": "candidates_data", "data": candidatos_para_front})
 
@@ -236,7 +236,7 @@ class PlacaController:
                                 try:
                                     concatenated_chars = np.concatenate(chars_list, axis=1)
                                     _emit({"step": "final_segmentation", "image": concatenated_chars})
-                                except ValueError: # Lida com listas vazias ou formatos inválidos
+                                except ValueError: 
                                     pass 
                         except Exception as e:
                             print(f"[WARN] Erro ao gerar imagens de binarização/segmentação: {e}", file=sys.stderr)
@@ -256,8 +256,7 @@ class PlacaController:
 
         # --- PERSISTÊNCIA ---
         if texto_final and crop_final_bgr is not None:
-            # Tenta usar o overlay_top5 se ele foi criado, senão o overlay do melhor
-            img_annot = overlay_top5 if 'overlay_top5' in locals() else _overlay_quad(original, best_initial.get("quad"))
+            img_annot = overlay_top5 if 'overlay_top5' in locals() else _overlay_quad(original, candidate_quad)
             if img_annot is None: img_annot = original
             
             crop_rgb_para_salvar = cv2.cvtColor(crop_final_bgr, cv2.COLOR_BGR2RGB)
@@ -274,7 +273,7 @@ class PlacaController:
             "panel": panel 
         }
 
-    # --- (Método consultarRegistros permanece o mesmo) ---
+    # --- MÉTODO DE CONSULTA DE REGISTROS (Sem alterações) ---
     @staticmethod
     def consultarRegistros(arg=None, data_inicio: datetime = None, data_fim: datetime = None):
         placa = None
@@ -311,5 +310,33 @@ class PlacaController:
         except Exception as e:
             print(f"[ERRO] Erro ao consultar registros: {e}")
             return []
+        finally:
+            db.close()
+            
+    # --- NOVO MÉTODO: DELETAR REGISTRO ---
+    @staticmethod
+    def deletarRegistro(id: int) -> bool:
+        """
+        Deleta um registro no banco de dados com base no ID.
+        Retorna True se deletou (1 ou mais linhas afetadas), False caso contrário.
+        """
+        db = SessionLocal()
+        try:
+            # Constrói a declaração DELETE
+            stmt = delete(TabelaAcesso).where(TabelaAcesso.id == id)
+            
+            # Executa a declaração
+            result = db.execute(stmt)
+            
+            # Commit para efetivar a exclusão
+            db.commit()
+            
+            # Retorna True se pelo menos uma linha foi afetada
+            return result.rowcount > 0
+            
+        except Exception as e:
+            print(f"[ERRO] Erro ao deletar registro {id}: {e}", file=sys.stderr)
+            db.rollback()
+            return False
         finally:
             db.close()
