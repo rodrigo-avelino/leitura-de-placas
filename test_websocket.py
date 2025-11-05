@@ -118,7 +118,7 @@ async def test_processing(image_path):
 
 if __name__ == "__main__":
     # --- MUDE AQUI O CAMINHO DA IMAGEM ---
-    caminho_da_imagem = r"C:\Users\rodri\Documents\TrabalhoPDI\Fotos\fotosjuntas\img_012940.jpg" # Usei o 'r'
+    caminho_da_imagem = r"C:\Users\rodri\Documents\TrabalhoPDI\Fotos\fotosjuntas\img_013952.jpg" # Usei o 'r'
     
     if not os.path.exists(caminho_da_imagem):
         print(f"ERRO: Caminho da imagem de teste não encontrado.")

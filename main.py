@@ -1,5 +1,5 @@
 import uvicorn
-from fastapi import FastAPI, WebSocket, File, UploadFile, Depends, Query, WebSocketDisconnect, Response, HTTPException
+from fastapi import FastAPI, WebSocket, File, UploadFile, Depends, Query, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.concurrency import run_in_threadpool
 from datetime import datetime, date
@@ -11,10 +11,11 @@ import base64
 import io
 import sys
 import asyncio
+from contextlib import asynccontextmanager
 
 # Importa o seu controller e serviços
 from src.controllers.placaController import PlacaController
-from src.config.db import criarTabela
+from src.config.db import criarTabela # Importa a função de criar tabela
 
 # --- Modelos Pydantic (Tipagem da API) ---
 class RegistroResponse(pydantic.BaseModel):
@@ -26,7 +27,7 @@ class RegistroResponse(pydantic.BaseModel):
 class HealthCheck(pydantic.BaseModel):
     status: str
 
-# --- Função Auxiliar de Codificação ---
+# --- (Função Auxiliar de Codificação - Sem alterações) ---
 def _encode_image_to_base64(image_array: np.ndarray) -> str:
     if image_array is None or image_array.size == 0:
         return None
@@ -43,26 +44,76 @@ def _encode_image_to_base64(image_array: np.ndarray) -> str:
         print(f"Erro ao codificar imagem: {e}", file=sys.stderr)
         return None
 
-# --- Inicialização do App FastAPI ---
+# --- GERENCIADOR DE CONEXÕES WEBSOCKET PARA REGISTROS ---
+class ConnectionManager:
+    """Gerencia as conexões WebSocket ativas para notificações de registros."""
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+        print(f"Nova conexão de registro estabelecida. Total: {len(self.active_connections)}")
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+        print(f"Conexão de registro encerrada. Total: {len(self.active_connections)}")
+
+    async def broadcast(self, message: dict):
+        """Envia a mensagem (o novo registro) para todos os clientes ativos."""
+        send_tasks = [connection.send_json(message) for connection in self.active_connections]
+        
+        # Executa as tarefas de envio
+        done, pending = await asyncio.wait(
+            send_tasks, return_when=asyncio.FIRST_EXCEPTION
+        )
+        
+        # Remove conexões que falharam no broadcast (conexões quebradas)
+        for task in done:
+            if task.exception():
+                try:
+                    # Encontra a conexão a partir do objeto coroutine
+                    coro = task.get_coro()
+                    ws = coro.get_wrapped_object()
+                    self.active_connections.remove(ws)
+                    print("Conexão removida devido a falha no broadcast.")
+                except Exception as e:
+                    print(f"Erro ao remover conexão quebrada: {e}")
+
+# Instância global do manager para a API
+registro_manager = ConnectionManager()
+
+
+# --- GERENCIADOR LIFESPAN ---
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("Iniciando API e verificando banco de dados...")
+    criarTabela()
+    print("Banco de dados pronto.")
+    
+    yield
+    
+    print("API desligada.")
+
+# --- INICIALIZAR O APP FASTAPI COM O LIFESPAN ---
 app = FastAPI(
     title="API de ALPR",
     description="Processa e consulta placas de veículos.",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
+
+# Configuração do CORS (Sem alterações)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-@app.on_event("startup")
-def on_startup():
-    print("Iniciando API e verificando banco de dados...")
-    criarTabela()
-    print("Banco de dados pronto.")
 
-# --- Endpoints GET e Consulta ---
+
+# --- ENDPOINTS HTTP ---
 @app.get("/", response_model=HealthCheck)
 def read_root():
     return {"status": "API de ALPR online"}
@@ -79,33 +130,18 @@ async def consultar_registros(
     registros = await run_in_threadpool(PlacaController.consultarRegistros, arg=filtros)
     return registros
 
-# --- NOVO ENDPOINT DE EXCLUSÃO (DELETE) ---
-@app.delete("/api/v1/registros/{registro_id}", status_code=204) # 204 No Content
-async def deletar_registro(registro_id: int):
-    """
-    Exclui um registro de placa pelo seu ID.
-    """
-    # Executa a função de exclusão no controller em um thread pool
-    sucesso = await run_in_threadpool(PlacaController.deletarRegistro, id=registro_id)
-    
-    if not sucesso:
-        # Se o PlacaController retornar False, o registro não foi encontrado
-        raise HTTPException(status_code=404, detail=f"Registro ID {registro_id} não encontrado.")
-    
-    # Retorna status 204 (No Content), que significa sucesso na exclusão
-    return Response(status_code=204)
 
-
-# --- ENDPOINT WEBSOCKET ---
+# --- ENDPOINT WEBSOCKET PARA PROCESSAMENTO (ALPR) ---
 @app.websocket("/ws/processar-imagem")
 async def processar_imagem_ws(websocket: WebSocket):
-    await websocket.accept() 
-    
+    await websocket.accept()
     main_event_loop = asyncio.get_running_loop()
-
+    
+    # Variável para armazenar o resultado final do registro (se bem-sucedido)
+    registro_salvo = None 
+    
     try:
         image_bytes = await websocket.receive_bytes() 
-        
         data_capturada = datetime.utcnow()
         await websocket.send_json({"step": "start", "message": "Imagem recebida, iniciando processamento..."})
 
@@ -128,6 +164,7 @@ async def processar_imagem_ws(websocket: WebSocket):
                 main_event_loop
             )
 
+        # Assumindo que PlacaController.processarImagem agora retorna o RegistroResponse salvo
         final_result = await run_in_threadpool(
             PlacaController.processarImagem,
             source_image=io.BytesIO(image_bytes),
@@ -135,21 +172,58 @@ async def processar_imagem_ws(websocket: WebSocket):
             on_update=on_update_sync_callback
         )
         
+        # --- LÓGICA DE WEBSOCKET DE REGISTRO (Broadcast) ---
+        if final_result.get("status") == "ok":
+            registro_salvo = {
+                "placa": final_result.get("texto_final"),
+                "tipo_placa": final_result.get("padrao_placa"),
+                "data": final_result.get("data_registro"), # Deve ser retornado pelo Controller
+                "imagem": final_result.get("imagem_base64"), # Deve ser retornado pelo Controller
+            }
+            # Envia o registro salvo para todos os clientes em /ws/registros
+            asyncio.run_coroutine_threadsafe(
+                 registro_manager.broadcast(registro_salvo),
+                 main_event_loop
+            )
+
+        # Envia o resultado final do processamento ALPR para o cliente atual
         await websocket.send_json({
             "step": "final_result", 
             "status": final_result.get("status"),
             "texto_final": final_result.get("texto_final"),
-            "padrao_placa": final_result.get("padrao_placa")
+            "padrao_placa": final_result.get("padrao_placa"),
+            "data_registro": final_result.get("data_registro") # Opcional
         })
-
         await websocket.close()
 
     except WebSocketDisconnect:
-        print("Cliente WebSocket desconectado.")
+        print("Cliente WebSocket de processamento desconectado.")
     except Exception as e:
-        print(f"Erro no WebSocket: {e}", file=sys.stderr)
+        print(f"Erro no WebSocket de processamento: {e}", file=sys.stderr)
         try:
             await websocket.send_json({"step": "error", "message": f"Erro interno no servidor: {e}"})
             await websocket.close()
         except:
-            pass
+            pass 
+
+
+# --- NOVO ENDPOINT WEBSOCKET PARA REGISTROS EM TEMPO REAL ---
+@app.websocket("/ws/registros")
+async def websocket_registros_endpoint(websocket: WebSocket):
+    await registro_manager.connect(websocket)
+    try:
+        # Mantém a conexão aberta. O receive_text aqui é apenas para esperar
+        # a desconexão do cliente, pois a API não espera dados dele, apenas envia.
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        registro_manager.disconnect(websocket)
+    except Exception as e:
+        print(f"Erro inesperado no WS de registro: {e}")
+        registro_manager.disconnect(websocket)
+
+
+# --- Ponto de entrada ---
+if __name__ == "__main__":
+    print("Iniciando servidor Uvicorn em http://127.0.0.1:8000")
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)

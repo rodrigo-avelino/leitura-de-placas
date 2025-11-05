@@ -1,9 +1,9 @@
-# src/controllers/placaController.py (v1.3 - Com DELETE)
+# src/controllers/placaController.py (v1.4 - Pronto para Broadcast)
 
 import cv2
 import base64
 import numpy as np
-from typing import Any
+from typing import Any, Dict # Importação adicionada
 from pathlib import Path
 from io import BytesIO, BufferedReader
 from datetime import datetime
@@ -27,11 +27,11 @@ from src.services.analiseCor import AnaliseCor
 from src.models.acessoModel import TabelaAcesso
 from src.config.db import SessionLocal
 
-# 💡 Novo import necessário para a exclusão
+# Novo import necessário para a exclusão
 from sqlalchemy import delete 
 
 # --- Funções Auxiliares de Visualização (Sem alterações) ---
-
+# (Manter _overlay_contours, _overlay_quad, _overlay_filled_quad, _read_image_bgr)
 def _overlay_contours(bgr, contours, color=(0, 255, 255), thickness=2):
     """ Desenha todos os contornos encontrados para depuração. """
     if contours is None: return None
@@ -89,13 +89,13 @@ def _read_image_bgr(source: Any) -> np.ndarray:
     if img is None:
         raise ValueError("Falha ao decodificar a imagem.")
     return img
-
+# (FIM DAS AUXILIARES)
+# ---
 
 class PlacaController:
 
     @staticmethod
-    def processarImagem(source_image: Any, data_capturada: datetime, on_update=None):
-        # ... (Método processarImagem - Não alterado)
+    def processarImagem(source_image: Any, data_capturada: datetime, on_update=None) -> Dict[str, Any]:
         panel = {}
         def _emit(delta: dict):
             panel.update(delta)
@@ -164,9 +164,10 @@ class PlacaController:
         crop_final_bgr = None
         NUM_CANDIDATOS_TENTAR = 5
         blue_threshold = 0.12
+        candidate_quad = None # Variável para o último quad tentado
 
         for i, candidate in enumerate(candidatos[:NUM_CANDIDATOS_TENTAR]):
-            candidate_quad = candidate.get("quad")
+            candidate_quad = candidate.get("quad") # Atualiza o quad na iteração
             if candidate_quad is None: continue
 
             _emit({"step": "fallback_attempt", "candidate_rank": i + 1})
@@ -209,7 +210,7 @@ class PlacaController:
                             for placa, padrao in placas_validas:
                                 if padrao == "ANTIGA": texto_placa_escolhida, padrao_placa_escolhida = placa, padrao; break
                         if not texto_placa_escolhida:
-                             texto_placa_escolhida, padrao_placa_escolhida = placas_validas[0]
+                            texto_placa_escolhida, padrao_placa_escolhida = placas_validas[0]
 
                     if texto_placa_escolhida:
                         texto_final = texto_placa_escolhida
@@ -225,14 +226,11 @@ class PlacaController:
 
                         # --- NOVOS EVENTOS: BINARIZAÇÃO E SEGMENTAÇÃO DO VENCEDOR ---
                         try:
-                            # 1. Binarização
                             bin_img = Binarizacao.executar(crop_bgr)
                             _emit({"step": "final_binarization", "image": bin_img})
                             
-                            # 2. Segmentação
                             chars_list = Segmentacao.executar(bin_img)
                             if chars_list:
-                                # Tenta concatenar horizontalmente
                                 try:
                                     concatenated_chars = np.concatenate(chars_list, axis=1)
                                     _emit({"step": "final_segmentation", "image": concatenated_chars})
@@ -249,28 +247,45 @@ class PlacaController:
                 continue
 
         # --- FIM DA LÓGICA DE FALLBACK ---
-
+        
+        # --- PREPARAÇÃO DO RETORNO DE SUCESSO OU FALHA ---
+        
+        # 1. Caso de Falha
         if texto_final is None:
             _emit({"step": "fallback_failed_all", "message": "Nenhum candidato produziu placa válida"})
-            return { "status": "invalido", "texto_final": None, "panel": panel }
+            return { "status": "invalido", "texto_final": None, "padrao_placa": None, "panel": panel }
 
-        # --- PERSISTÊNCIA ---
-        if texto_final and crop_final_bgr is not None:
-            img_annot = overlay_top5 if 'overlay_top5' in locals() else _overlay_quad(original, candidate_quad)
-            if img_annot is None: img_annot = original
-            
-            crop_rgb_para_salvar = cv2.cvtColor(crop_final_bgr, cv2.COLOR_BGR2RGB)
-            Persistencia.salvar(
-                texto_final, 1.0, original, 
-                crop_rgb_para_salvar, img_annot, data_capturada,
-                placa_padrao=padrao_placa
-            )
-
+        # 2. Caso de Sucesso: PERSISTÊNCIA e PREPARAÇÃO DO RETORNO
+        
+        img_annot = overlay_top5 if 'overlay_top5' in locals() else _overlay_quad(original, candidate_quad)
+        if img_annot is None: img_annot = original
+        
+        # 💡 CRÍTICO: Persistir e Obter o objeto salvo
+        crop_rgb_para_salvar = cv2.cvtColor(crop_final_bgr, cv2.COLOR_BGR2RGB)
+        
+        # CHAMA O SERVIÇO DE PERSISTÊNCIA (Presume-se que ele retorna o objeto TabelaAcesso salvo)
+        registro_salvo: TabelaAcesso = Persistencia.salvar(
+            texto_final, 1.0, original, 
+            crop_rgb_para_salvar, img_annot, data_capturada,
+            placa_padrao=padrao_placa
+        )
+        
+        # --- PREPARAÇÃO DOS DADOS PARA BROADCAST NO main.py ---
+        # Codifica a imagem do crop salvo em Base64 para o Broadcast
+        registro_crop_b64 = None
+        if registro_salvo.plate_crop_image:
+            registro_crop_b64 = "data:image/png;base64," + base64.b64encode(registro_salvo.plate_crop_image).decode("utf-8")
+        
         return { 
             "status": "ok", 
             "texto_final": texto_final, 
             "padrao_placa": padrao_placa,
-            "panel": panel 
+            "panel": panel,
+            
+            # CAMPOS NECESSÁRIOS PARA O BROADCAST NO main.py
+            "data_registro": registro_salvo.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "imagem_base64": registro_crop_b64,
+            "tipo_placa": registro_salvo.plate_type
         }
 
     # --- MÉTODO DE CONSULTA DE REGISTROS (Sem alterações) ---
@@ -313,27 +328,15 @@ class PlacaController:
         finally:
             db.close()
             
-    # --- NOVO MÉTODO: DELETAR REGISTRO ---
+    # --- NOVO MÉTODO: DELETAR REGISTRO (Sem alterações) ---
     @staticmethod
     def deletarRegistro(id: int) -> bool:
-        """
-        Deleta um registro no banco de dados com base no ID.
-        Retorna True se deletou (1 ou mais linhas afetadas), False caso contrário.
-        """
         db = SessionLocal()
         try:
-            # Constrói a declaração DELETE
             stmt = delete(TabelaAcesso).where(TabelaAcesso.id == id)
-            
-            # Executa a declaração
             result = db.execute(stmt)
-            
-            # Commit para efetivar a exclusão
             db.commit()
-            
-            # Retorna True se pelo menos uma linha foi afetada
             return result.rowcount > 0
-            
         except Exception as e:
             print(f"[ERRO] Erro ao deletar registro {id}: {e}", file=sys.stderr)
             db.rollback()

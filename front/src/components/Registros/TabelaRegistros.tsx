@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,30 +10,69 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Eye, Trash2, Calendar, Clock, Car, MapPin } from "lucide-react";
+import { Eye, Trash2, Calendar, Clock, Car, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 
+// --- TIPAGENS CORRIGIDAS E COMPLETAS ---
+type DeleteStatus = "idle" | "running" | "success" | "failed";
+
 export interface Registro {
-  id: number;
+  // CORRIGIDO: Aceita string (WS) ou number (DB), como definido no hook
+  id: number | string;
   placa: string;
   dataHora: string;
   imagemUrl: string;
+  tipo_placa?: string; // Incluído
 }
 
 interface TabelaRegistrosProps {
   registros: Registro[];
-  onDelete: (id: number) => void;
+  // Corrigido para aceitar id: number | string
+  onDelete: (id: number | string) => void;
+  // Adicionado o status de deleção do hook
+  deleteStatus: DeleteStatus;
 }
 
-const TabelaRegistros = ({ registros, onDelete }: TabelaRegistrosProps) => {
-  const [selectedRegistro, setSelectedRegistro] = useState<Registro | null>(null);
+const TabelaRegistros = ({
+  registros,
+  onDelete,
+  deleteStatus,
+}: TabelaRegistrosProps) => {
+  const [selectedRegistro, setSelectedRegistro] = useState<Registro | null>(
+    null
+  );
 
-  const handleDelete = (id: number, placa: string) => {
+  // Lógica para mostrar feedback visual do status de deleção
+  useMemo(() => {
+    if (deleteStatus === "success") {
+      toast.success("Registro removido com sucesso.");
+      toast.dismiss(`delete-progress`);
+    } else if (deleteStatus === "failed") {
+      toast.error("Falha ao remover registro. Tente novamente.");
+      toast.dismiss(`delete-progress`);
+    }
+  }, [deleteStatus]);
+
+  const handleDelete = (id: number | string, placa: string) => {
+    // Mostra o feedback de carregamento
+    toast.loading(`Removendo registro da placa ${placa}...`, {
+      id: `delete-progress`,
+    });
+    // Chama o handler do componente pai (que executa o deleteRegistro(id) do hook)
     onDelete(id);
-    toast.success(`Registro da placa ${placa} removido com sucesso`);
   };
+
+  // Helper para exibir o Badge de tipo de placa
+  const renderTipoPlaca = (tipo?: string) => {
+    if (!tipo) return null;
+    const variant = tipo === "MERCOSUL" ? "default" : "secondary";
+    return <Badge variant={variant}>{tipo}</Badge>;
+  };
+
+  // Verifica se a deleção está em andamento.
+  const isDeleting = deleteStatus === "running";
 
   return (
     <>
@@ -75,9 +114,10 @@ const TabelaRegistros = ({ registros, onDelete }: TabelaRegistrosProps) => {
                       </p>
                     </div>
                   </div>
-                  <Badge className="font-mono">
-                    #{registro.id}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    {renderTipoPlaca(registro.tipo_placa)}
+                    <Badge className="font-mono">#{registro.id}</Badge>
+                  </div>
                 </div>
 
                 <Separator />
@@ -89,7 +129,9 @@ const TabelaRegistros = ({ registros, onDelete }: TabelaRegistrosProps) => {
                     <div>
                       <p className="text-xs text-muted-foreground">Data</p>
                       <p className="font-medium text-foreground">
-                        {format(new Date(registro.dataHora), "dd/MM/yy", { locale: ptBR })}
+                        {format(new Date(registro.dataHora), "dd/MM/yy", {
+                          locale: ptBR,
+                        })}
                       </p>
                     </div>
                   </div>
@@ -98,7 +140,9 @@ const TabelaRegistros = ({ registros, onDelete }: TabelaRegistrosProps) => {
                     <div>
                       <p className="text-xs text-muted-foreground">Horário</p>
                       <p className="font-medium text-foreground">
-                        {format(new Date(registro.dataHora), "HH:mm", { locale: ptBR })}
+                        {format(new Date(registro.dataHora), "HH:mm", {
+                          locale: ptBR,
+                        })}
                       </p>
                     </div>
                   </div>
@@ -114,6 +158,7 @@ const TabelaRegistros = ({ registros, onDelete }: TabelaRegistrosProps) => {
                       e.stopPropagation();
                       setSelectedRegistro(registro);
                     }}
+                    disabled={isDeleting}
                   >
                     <Eye className="w-4 h-4 mr-1" />
                     Ver Detalhes
@@ -121,12 +166,18 @@ const TabelaRegistros = ({ registros, onDelete }: TabelaRegistrosProps) => {
                   <Button
                     variant="destructive"
                     size="sm"
+                    // Desabilita durante o processamento de deleção
+                    disabled={isDeleting}
                     onClick={(e) => {
                       e.stopPropagation();
                       handleDelete(registro.id, registro.placa);
                     }}
                   >
-                    <Trash2 className="w-4 h-4" />
+                    {isDeleting ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-4 h-4" />
+                    )}
                   </Button>
                 </div>
               </CardContent>
@@ -135,7 +186,11 @@ const TabelaRegistros = ({ registros, onDelete }: TabelaRegistrosProps) => {
         </div>
       )}
 
-      <Dialog open={!!selectedRegistro} onOpenChange={() => setSelectedRegistro(null)}>
+      {/* Diálogo de Detalhes */}
+      <Dialog
+        open={!!selectedRegistro}
+        onOpenChange={() => setSelectedRegistro(null)}
+      >
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>Detalhes do Registro</DialogTitle>
@@ -143,11 +198,12 @@ const TabelaRegistros = ({ registros, onDelete }: TabelaRegistrosProps) => {
               Informações completas do veículo detectado
             </DialogDescription>
           </DialogHeader>
-          
+
           {selectedRegistro && (
             <div className="space-y-6">
               {/* Informações do Registro */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Placa */}
                 <Card className="p-4">
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-accent/10">
@@ -161,7 +217,7 @@ const TabelaRegistros = ({ registros, onDelete }: TabelaRegistrosProps) => {
                     </div>
                   </div>
                 </Card>
-
+                {/* Data */}
                 <Card className="p-4">
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-primary/10">
@@ -170,12 +226,16 @@ const TabelaRegistros = ({ registros, onDelete }: TabelaRegistrosProps) => {
                     <div>
                       <p className="text-sm text-muted-foreground">Data</p>
                       <p className="text-lg font-semibold text-foreground">
-                        {format(new Date(selectedRegistro.dataHora), "dd/MM/yyyy", { locale: ptBR })}
+                        {format(
+                          new Date(selectedRegistro.dataHora),
+                          "dd/MM/yyyy",
+                          { locale: ptBR }
+                        )}
                       </p>
                     </div>
                   </div>
                 </Card>
-
+                {/* Horário */}
                 <Card className="p-4">
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-success/10">
@@ -184,19 +244,24 @@ const TabelaRegistros = ({ registros, onDelete }: TabelaRegistrosProps) => {
                     <div>
                       <p className="text-sm text-muted-foreground">Horário</p>
                       <p className="text-lg font-semibold text-foreground">
-                        {format(new Date(selectedRegistro.dataHora), "HH:mm:ss", { locale: ptBR })}
+                        {format(
+                          new Date(selectedRegistro.dataHora),
+                          "HH:mm:ss",
+                          { locale: ptBR }
+                        )}
                       </p>
                     </div>
                   </div>
                 </Card>
               </div>
+              {/* FIM: grid grid-cols-1 md:grid-cols-3 gap-4 */}
 
               <Separator />
 
               {/* Imagem do Veículo */}
               <div>
                 <h4 className="text-sm font-semibold text-foreground mb-3">
-                  Imagem Capturada
+                  Imagem Capturada (Recorte)
                 </h4>
                 <div className="rounded-lg overflow-hidden border border-border bg-muted">
                   <img
@@ -207,10 +272,24 @@ const TabelaRegistros = ({ registros, onDelete }: TabelaRegistrosProps) => {
                 </div>
               </div>
 
-              {/* ID do Registro */}
+              {/* ID do Registro e Tipo de Placa */}
               <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
-                <span className="text-sm text-muted-foreground">ID do Registro:</span>
-                <span className="font-mono font-semibold text-foreground">#{selectedRegistro.id}</span>
+                <span className="text-sm text-muted-foreground">
+                  Tipo de Placa:
+                  <Badge
+                    className="ml-2"
+                    variant={
+                      selectedRegistro.tipo_placa === "MERCOSUL"
+                        ? "default"
+                        : "secondary"
+                    }
+                  >
+                    {selectedRegistro.tipo_placa || "INDEFINIDO"}
+                  </Badge>
+                </span>
+                <span className="font-mono font-semibold text-foreground">
+                  #{selectedRegistro.id}
+                </span>
               </div>
             </div>
           )}

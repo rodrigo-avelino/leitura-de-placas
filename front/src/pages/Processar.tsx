@@ -1,147 +1,254 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Navigation from "@/components/Layout/Navigation";
 import UploadForm from "@/components/Processamento/UploadForm";
 import ImageDisplay from "@/components/Processamento/ImageDisplay";
 import AnaliseLog from "@/components/Processamento/AnaliseLog";
 import DateTimeSelector from "@/components/Processamento/DateTimeSelector";
+import { usePlateWebSocket } from "@/hooks/usePlateWebSocket"; // Importando o hook (essencial)
+import { Card } from "@/components/ui/card";
 
-type StepStatus = "pending" | "processing" | "completed";
+// --- TIPAGENS (6 PASSOS DA DOCUMENTAÇÃO) ---
+type StepStatus = "pending" | "processing" | "completed" | "failed";
 
 interface Step {
   id: number;
   name: string;
   description: string;
   status: StepStatus;
-  imageUrl?: string;
+  // Campos para guardar dados dinâmicos da API
+  images: { [key: string]: string | null };
+  logMessages: string[];
+  result?: {
+    placa: string | null;
+    padrao: string | null;
+    candidato: number | null;
+  };
 }
 
-const mockSteps: Step[] = [
+// NOVO Mapeamento dos passos baseado na Estrutura Visual da documentação (6 Sanfonas)
+const initialSteps: Step[] = [
   {
     id: 1,
     name: "Pré-processamento",
     description: "Conversão para cinza e suavização.",
     status: "pending",
-    imageUrl:
-      "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=600&h=400&fit=crop",
+    images: {},
+    logMessages: [],
   },
   {
     id: 2,
     name: "Bordas e Contorno",
-    description: "Regiões candidatas destacadas.",
+    description: "Identificação de regiões candidatas.",
     status: "pending",
-    imageUrl:
-      "https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?w=600&h=400&fit=crop",
+    images: {},
+    logMessages: [],
   },
   {
     id: 3,
-    name: "Detecção da Placa",
-    description: "Placa localizada na imagem.",
+    name: "Filtragem de Contornos (Fallback)",
+    description: "Tentativas de OCR e escolha do candidato.",
     status: "pending",
-    imageUrl:
-      "https://images.unsplash.com/photo-1605559424843-9e4c228bf1c2?w=600&h=400&fit=crop",
+    images: {},
+    logMessages: [],
   },
   {
     id: 4,
-    name: "Recorte da Placa",
-    description: "Crop da região estimada.",
+    name: "Recorte da Placa (Vencedor)",
+    description: "Recorte da região que obteve sucesso.",
     status: "pending",
-    imageUrl:
-      "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=600&h=400&fit=crop",
+    images: {},
+    logMessages: [],
   },
   {
     id: 5,
-    name: "Binarização",
-    description: "Separação foreground/background para OCR",
+    name: "Binarização e Segmentação",
+    description: "Imagens do processo final de OCR.",
     status: "pending",
-    imageUrl:
-      "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=600&h=400&fit=crop",
+    images: {},
+    logMessages: [],
   },
   {
     id: 6,
-    name: "Caracteres Segmentados",
-    description: "Candidatos identificados (ordem de leitura)",
+    name: "Validação e Resultado Final",
+    description: "Resumo do resultado da análise.",
     status: "pending",
-    imageUrl:
-      "https://images.unsplash.com/photo-1517420704952-d9f39e95b43e?w=600&h=400&fit=crop",
-  },
-  {
-    id: 7,
-    name: "OCR",
-    description: "Leitura dos caracteres",
-    status: "pending",
-    imageUrl:
-      "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&h=400&fit=crop",
-  },
-  {
-    id: 8,
-    name: "Validação e Armazenamento",
-    description: "Padrão, consistência e registro.s",
-    status: "pending",
-    imageUrl:
-      "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&h=400&fit=crop",
+    images: {},
+    logMessages: [],
   },
 ];
 
+// Mapeamento de Eventos da API para o ID das 6 Sanfonas da UI
+const STEP_MAPPING: { [key: string]: number } = {
+  // Passo 1
+  start: 1,
+  original: 1,
+  preprocessing_done: 1,
+
+  // Passo 2
+  contours_done: 2,
+  top_5_overlay: 2,
+
+  // Passo 3 (Lógica de Fallback)
+  candidates_data: 3,
+  fallback_attempt: 3,
+  ocr_attempt_result: 3,
+  candidate_chosen: 3,
+  fallback_failed_all: 3,
+
+  // Passo 4
+  candidate_crop_attempt: 4,
+
+  // Passo 5
+  final_binarization: 5,
+  final_segmentation: 5,
+
+  // Passo 6
+  final_result: 6,
+  error: 6,
+};
+
 const Processar = () => {
-  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
-  const [croppedPlate, setCroppedPlate] = useState<string | null>(null);
-  const [steps, setSteps] = useState(mockSteps);
-  const [currentStep, setCurrentStep] = useState(0);
+  // Estados do Processamento
+  const [originalFile, setOriginalFile] = useState<File | null>(null);
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null); // URL do blob para preview
+  const [steps, setSteps] = useState(initialSteps);
   const [captureDateTime, setCaptureDateTime] = useState<Date>(new Date());
 
+  // Hook do WebSocket
+  const {
+    isProcessing,
+    log, // Log de eventos brutos (usado para extrair informações)
+    finalPlate, // Placa final (texto)
+    status, // 'idle', 'processing', 'success', 'failed'
+    processImage,
+    closeConnection,
+    croppedPlateBase64, // Imagem recortada do vencedor (opcional)
+    // O hook deve retornar também o rank vencedor para o step 4
+    candidateRankWinner,
+    currentStepImages, // O hook deve retornar um objeto de imagens Base64
+    currentLogMessages, // O hook deve retornar o log de tentativas
+  } = usePlateWebSocket();
+
+  // --- LÓGICA PRINCIPAL DE ATUALIZAÇÃO DOS STEPS (UI) ---
   useEffect(() => {
-    if (uploadedImage && currentStep < steps.length) {
-      const timer = setTimeout(() => {
-        setSteps((prev) =>
-          prev.map((step, index) => {
-            if (index === currentStep) {
-              return { ...step, status: "processing" };
-            }
-            if (index < currentStep) {
-              return { ...step, status: "completed" };
-            }
-            return step;
-          })
-        );
+    if (log.length === 0) return;
 
-        setTimeout(() => {
-          setSteps((prev) =>
-            prev.map((step, index) => {
-              if (index === currentStep) {
-                return { ...step, status: "completed" };
-              }
-              return step;
-            })
-          );
+    // O último log define a progressão
+    const lastLog = log[log.length - 1];
+    const currentStepId = STEP_MAPPING[lastLog.step] || 0;
 
-          // Simula o recorte da placa no passo 4
-          if (currentStep === 3 && !croppedPlate) {
-            setCroppedPlate(uploadedImage);
+    // Define o status de conclusão/falha
+    const isFailure = status === "failed";
+    const isSuccess = status === "success" && !isProcessing;
+
+    setSteps((prevSteps) =>
+      prevSteps.map((step) => {
+        const newStep = { ...step };
+
+        // 1. Marca passos anteriores como COMPLETED
+        if (newStep.id < currentStepId) {
+          newStep.status = "completed";
+        }
+
+        // 2. Marca o passo atual como PROCESSING
+        if (newStep.id === currentStepId) {
+          // Lógica de Falha
+          if (
+            lastLog.step === "fallback_failed_all" ||
+            lastLog.step === "error"
+          ) {
+            newStep.status = "failed";
           }
+          // Lógica de Sucesso (após o último passo)
+          else if (isSuccess && newStep.id === 6) {
+            newStep.status = "completed";
+          }
+          // Caso contrário, está em processamento
+          else {
+            newStep.status = "processing";
+          }
+        }
 
-          setCurrentStep((prev) => prev + 1);
-        }, 1500);
-      }, 500);
+        // 3. Atualiza o conteúdo dinâmico do step (Imagens, Logs, Resultado)
+        // Nota: Assumimos que o usePlateWebSocket compila estas informações
+        if (newStep.id === 3 && currentLogMessages) {
+          newStep.logMessages = currentLogMessages;
+        }
 
-      return () => clearTimeout(timer);
+        if (newStep.id === 6 && isSuccess) {
+          newStep.result = {
+            placa: finalPlate,
+            padrao:
+              log.find((l) => l.step === "final_result")?.padrao_placa || null,
+            candidato: candidateRankWinner,
+          };
+          newStep.status = "completed";
+        }
+
+        // Sincroniza imagens globais (se o hook as fornecer)
+        if (currentStepImages) {
+          // Exemplo: Atualiza Step 1 com imagem de preprocessing_done
+          if (newStep.id === 1 && currentStepImages.preprocessing_done) {
+            newStep.images["main"] = currentStepImages.preprocessing_done;
+          }
+          // Exemplo: Atualiza Step 2 com imagem de top_5_overlay
+          if (newStep.id === 2 && currentStepImages.top_5_overlay) {
+            newStep.images["main"] = currentStepImages.top_5_overlay;
+          }
+          // Adicione lógica para Step 4 e 5 aqui, se as imagens vierem compiladas do hook
+        }
+
+        // Lógica de conclusão/falha final
+        if (isSuccess && newStep.id === 6) {
+          newStep.status = "completed";
+        } else if (isFailure && newStep.id === 6) {
+          newStep.status = "failed";
+        }
+
+        return newStep;
+      })
+    );
+  }, [
+    log,
+    isProcessing,
+    status,
+    finalPlate,
+    candidateRankWinner,
+    currentLogMessages,
+    currentStepImages,
+  ]);
+
+  // --- HANDLERS ---
+  const handleFileSelect = (file: File) => {
+    // 1. Limpa tudo
+    handleClear();
+
+    // 2. Prepara o File e URL para a UI
+    setOriginalFile(file);
+    const url = URL.createObjectURL(file);
+    setUploadedImage(url);
+
+    // 3. Reinicia os passos da UI
+    setSteps(initialSteps);
+  };
+
+  const handleProcessClick = () => {
+    if (originalFile) {
+      processImage(originalFile); // Inicia a conexão e envia o File
     }
-  }, [uploadedImage, currentStep, steps.length, croppedPlate]);
-
-  const handleImageUpload = (imageUrl: string) => {
-    setUploadedImage(imageUrl);
-    setCroppedPlate(null);
-    setSteps(mockSteps);
-    setCurrentStep(0);
   };
 
   const handleClear = () => {
+    if (uploadedImage) {
+      URL.revokeObjectURL(uploadedImage);
+    }
+    setOriginalFile(null);
     setUploadedImage(null);
-    setCroppedPlate(null);
-    setSteps(mockSteps);
-    setCurrentStep(0);
-    setCaptureDateTime(new Date());
+    setSteps(initialSteps); // Reset completo
+    closeConnection();
   };
 
+  // --- RENDERIZAÇÃO ---
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
@@ -157,25 +264,62 @@ const Processar = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* COLUNA ESQUERDA: INPUTS E DISPLAY (DESIGN DO SEU MOCK) */}
           <div className="space-y-6">
+            {/* 1. DateTimeSelector */}
             <DateTimeSelector
               dateTime={captureDateTime}
               onDateTimeChange={setCaptureDateTime}
+              disabled={isProcessing || !!uploadedImage}
             />
 
+            {/* 2. Upload/Display */}
             {!uploadedImage ? (
-              <UploadForm onImageUpload={handleImageUpload} />
+              <UploadForm
+                onFileSelect={handleFileSelect}
+                disabled={isProcessing}
+              />
             ) : (
               <ImageDisplay
                 imageUrl={uploadedImage}
-                croppedPlate={croppedPlate}
+                croppedPlate={croppedPlateBase64}
                 onClear={handleClear}
+                onProcess={handleProcessClick}
+                isProcessing={isProcessing}
+                status={status}
               />
+            )}
+
+            {/* 3. Card de Resultado Final */}
+            {finalPlate && status === "success" && !isProcessing && (
+              <Card className="p-6 border-2 border-green-500 bg-green-50">
+                <h3 className="text-lg font-semibold text-green-700 mb-2">
+                  Placa Identificada
+                </h3>
+                <p className="text-4xl font-bold text-green-900 text-center">
+                  {finalPlate}
+                </p>
+              </Card>
+            )}
+            {status === "failed" && !isProcessing && (
+              <Card className="p-6 border-2 border-red-500 bg-red-50">
+                <h3 className="text-lg font-semibold text-red-700 mb-2">
+                  Falha na Análise
+                </h3>
+                <p className="text-base text-red-900 text-center">
+                  Não foi possível identificar uma placa válida.
+                </p>
+              </Card>
             )}
           </div>
 
+          {/* COLUNA DIREITA: LOG DE ANÁLISE (DESIGN DO SEU MOCK) */}
           <div>
-            <AnaliseLog steps={steps} />
+            {/* O componente AnaliseLog precisa usar o design de Acordeão com StatusIcons */}
+            <AnaliseLog
+              steps={steps}
+              log={log} // Passa o log bruto para referência no AnaliseLog se necessário
+            />
           </div>
         </div>
       </main>
