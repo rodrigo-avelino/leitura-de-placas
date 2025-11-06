@@ -1,9 +1,9 @@
-# src/controllers/placaController.py (v1.4 - Pronto para Broadcast)
+# src/controllers/placaController.py (v1.5 - Finalizado para Broadcast e DELETE)
 
 import cv2
 import base64
 import numpy as np
-from typing import Any, Dict # Importação adicionada
+from typing import Any, Dict
 from pathlib import Path
 from io import BytesIO, BufferedReader
 from datetime import datetime
@@ -31,7 +31,6 @@ from src.config.db import SessionLocal
 from sqlalchemy import delete 
 
 # --- Funções Auxiliares de Visualização (Sem alterações) ---
-# (Manter _overlay_contours, _overlay_quad, _overlay_filled_quad, _read_image_bgr)
 def _overlay_contours(bgr, contours, color=(0, 255, 255), thickness=2):
     """ Desenha todos os contornos encontrados para depuração. """
     if contours is None: return None
@@ -89,8 +88,7 @@ def _read_image_bgr(source: Any) -> np.ndarray:
     if img is None:
         raise ValueError("Falha ao decodificar a imagem.")
     return img
-# (FIM DAS AUXILIARES)
-# ---
+
 
 class PlacaController:
 
@@ -125,7 +123,7 @@ class PlacaController:
         candidatos = FiltrarContornos.executar(todos_os_contornos, img_bgr)
         if not candidatos:
             _emit({"step": "error", "message": "Nenhum candidato a placa foi encontrado."})
-            return { "status": "erro", "texto_final": None, "panel": panel }
+            return { "status": "erro", "texto_final": None, "padrao_placa": None, "panel": panel }
 
         # --- NOVO EVENTO: ENVIAR TOP 5 CANDIDATOS OVERLAY ---
         try:
@@ -144,7 +142,6 @@ class PlacaController:
             _emit({"step": "top_5_overlay", "image": overlay_top5})
         except Exception as e:
             print(f"[WARN] Erro ao desenhar overlay_top5: {e}", file=sys.stderr)
-        # --- FIM DO NOVO EVENTO ---
 
         # Envia a lista de candidatos (sem imagens, só dados)
         candidatos_para_front = []
@@ -164,17 +161,16 @@ class PlacaController:
         crop_final_bgr = None
         NUM_CANDIDATOS_TENTAR = 5
         blue_threshold = 0.12
-        candidate_quad = None # Variável para o último quad tentado
+        candidate_quad = None
 
         for i, candidate in enumerate(candidatos[:NUM_CANDIDATOS_TENTAR]):
-            candidate_quad = candidate.get("quad") # Atualiza o quad na iteração
+            candidate_quad = candidate.get("quad")
             if candidate_quad is None: continue
 
             _emit({"step": "fallback_attempt", "candidate_rank": i + 1})
 
             try:
                 crop_bgr = Recorte.executar(img_bgr, candidate_quad)
-                # Emite o recorte do candidato que está sendo tentado
                 _emit({"step": "candidate_crop_attempt", "candidate_rank": i + 1, "image": crop_bgr})
 
                 texto_ocr, confiancas = OCR.executarImg(crop_bgr)
@@ -224,7 +220,7 @@ class PlacaController:
                             "padrao": padrao_placa
                         })
 
-                        # --- NOVOS EVENTOS: BINARIZAÇÃO E SEGMENTAÇÃO DO VENCEDOR ---
+                        # --- EVENTOS: BINARIZAÇÃO E SEGMENTAÇÃO DO VENCEDOR ---
                         try:
                             bin_img = Binarizacao.executar(crop_bgr)
                             _emit({"step": "final_binarization", "image": bin_img})
@@ -238,7 +234,7 @@ class PlacaController:
                                     pass 
                         except Exception as e:
                             print(f"[WARN] Erro ao gerar imagens de binarização/segmentação: {e}", file=sys.stderr)
-                        # --- FIM DOS NOVOS EVENTOS ---
+                        # --- FIM DOS EVENTOS ---
 
                         break
 
@@ -246,8 +242,6 @@ class PlacaController:
                 _emit({"step": "error", "message": f"Erro ao processar candidato #{i+1}: {loop_error}"})
                 continue
 
-        # --- FIM DA LÓGICA DE FALLBACK ---
-        
         # --- PREPARAÇÃO DO RETORNO DE SUCESSO OU FALHA ---
         
         # 1. Caso de Falha
@@ -260,18 +254,18 @@ class PlacaController:
         img_annot = overlay_top5 if 'overlay_top5' in locals() else _overlay_quad(original, candidate_quad)
         if img_annot is None: img_annot = original
         
-        # 💡 CRÍTICO: Persistir e Obter o objeto salvo
+        # Persistir e Obter o objeto salvo
         crop_rgb_para_salvar = cv2.cvtColor(crop_final_bgr, cv2.COLOR_BGR2RGB)
         
-        # CHAMA O SERVIÇO DE PERSISTÊNCIA (Presume-se que ele retorna o objeto TabelaAcesso salvo)
         registro_salvo: TabelaAcesso = Persistencia.salvar(
             texto_final, 1.0, original, 
             crop_rgb_para_salvar, img_annot, data_capturada,
             placa_padrao=padrao_placa
         )
+
+        print(f"--- DEBUG PROCESSAR IMAGEM: ID salvo no DB: {registro_salvo.id} ---")
         
         # --- PREPARAÇÃO DOS DADOS PARA BROADCAST NO main.py ---
-        # Codifica a imagem do crop salvo em Base64 para o Broadcast
         registro_crop_b64 = None
         if registro_salvo.plate_crop_image:
             registro_crop_b64 = "data:image/png;base64," + base64.b64encode(registro_salvo.plate_crop_image).decode("utf-8")
@@ -282,13 +276,14 @@ class PlacaController:
             "padrao_placa": padrao_placa,
             "panel": panel,
             
-            # CAMPOS NECESSÁRIOS PARA O BROADCAST NO main.py
+            # CORREÇÃO CRÍTICA: ID para o WebSocket
+            "id": registro_salvo.id,
             "data_registro": registro_salvo.created_at.strftime("%Y-%m-%d %H:%M:%S"),
             "imagem_base64": registro_crop_b64,
             "tipo_placa": registro_salvo.plate_type
         }
 
-    # --- MÉTODO DE CONSULTA DE REGISTROS (Sem alterações) ---
+    # --- MÉTODO DE CONSULTA DE REGISTROS (CORRIGIDO PARA RETORNAR ID) ---
     @staticmethod
     def consultarRegistros(arg=None, data_inicio: datetime = None, data_fim: datetime = None):
         placa = None
@@ -316,6 +311,7 @@ class PlacaController:
                 if r.plate_crop_image:
                     img_b64 = "data:image/png;base64," + base64.b64encode(r.plate_crop_image).decode("utf-8")
                 out.append({
+                    "id": r.id, # <-- CORREÇÃO: AGORA O ID É INCLUÍDO NA CONSULTA HISTÓRICA
                     "placa": r.plate_text,
                     "data": r.created_at.strftime("%Y-%m-%d %H:%M:%S"),
                     "imagem": img_b64,

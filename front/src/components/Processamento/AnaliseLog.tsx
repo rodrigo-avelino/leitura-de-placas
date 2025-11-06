@@ -15,8 +15,16 @@ import {
   Image as ImageIcon,
 } from "lucide-react"; // Ícones
 
-// --- TIPAGENS (Mantidas idênticas ao Processar.tsx) ---
+// --- TIPAGENS ---
 type StepStatus = "pending" | "processing" | "completed" | "failed";
+
+// Estrutura de dados de scores ranqueados (enviada pelo evento 'candidates_data')
+interface CandidateData {
+  rank: number;
+  score: number;
+  seg_score: number;
+  cores: { [key: string]: number }; // Ex: percent_azul_superior
+}
 
 interface Step {
   id: number;
@@ -34,10 +42,11 @@ interface Step {
 
 interface AnaliseLogProps {
   steps: Step[];
-  log: any[]; // Log completo do WebSocket (opcional, mas útil)
+  log: any[];
+  candidateData: CandidateData[]; // NOVO: Dados dos candidatos para a tabela
 }
 
-// --- Componente Auxiliar para o Ícone de Status (para manter o visual do mock) ---
+// --- Componente Auxiliar para o Ícone de Status ---
 const StatusIcon: React.FC<{ status: StepStatus }> = ({ status }) => {
   switch (status) {
     case "completed":
@@ -73,6 +82,63 @@ const ImageContainer: React.FC<{ title: string; src: string }> = ({
     />
   </div>
 );
+
+// Componente para exibir a Tabela de Scores dos Candidatos (Step 3)
+const CandidateTable: React.FC<{ candidates: CandidateData[] }> = ({
+  candidates,
+}) => {
+  if (candidates.length === 0) return null;
+
+  return (
+    <div className="mt-4 border rounded-md overflow-hidden text-xs">
+      <h4 className="font-semibold p-2 bg-gray-100 text-gray-700">
+        Top 5 Candidatos Ranqueados
+      </h4>
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="px-3 py-1 text-left font-bold text-gray-500 uppercase tracking-wider">
+              Rank
+            </th>
+            <th className="px-3 py-1 text-left font-bold text-gray-500 uppercase tracking-wider">
+              Score Total
+            </th>
+            <th className="px-3 py-1 text-left font-bold text-gray-500 uppercase tracking-wider">
+              Score Seg.
+            </th>
+            <th className="px-3 py-1 text-left font-bold text-gray-500 uppercase tracking-wider">
+              Azul Superior (%)
+            </th>
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {candidates.map((c, i) => (
+            <tr
+              key={c.rank}
+              className={i % 2 === 0 ? "bg-white" : "bg-gray-50"}
+            >
+              <td className="px-3 py-1 font-medium text-foreground">
+                {c.rank}
+              </td>
+              <td className="px-3 py-1 text-gray-700">
+                {c.score ? c.score.toFixed(2) : "N/A"}
+              </td>
+              <td className="px-3 py-1 text-gray-700">
+                {c.seg_score ? c.seg_score.toFixed(2) : "N/A"}
+              </td>
+              <td className="px-3 py-1 text-blue-600 font-semibold">
+                {c.cores?.percent_azul_superior
+                  ? (c.cores.percent_azul_superior * 100).toFixed(1)
+                  : "0.0"}
+                %
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
 
 // Componente para exibir o Log de Tentativas (Step 3: Filtragem/Fallback)
 const LogDisplay: React.FC<{ messages: string[] }> = ({ messages }) => (
@@ -145,13 +211,14 @@ const ResultadoFinalDisplay: React.FC<{
 };
 
 // --- Componente Principal AnaliseLog ---
-const AnaliseLog = ({ steps }: AnaliseLogProps) => {
+const AnaliseLog = ({ steps, candidateData }: AnaliseLogProps) => {
+  // Recebe candidateData
   // Identifica o item que deve estar aberto por padrão (o que está processando ou falhou)
   const defaultOpen = useMemo(() => {
     const activeStep = steps.find(
       (s) => s.status === "processing" || s.status === "failed"
     );
-    return activeStep ? activeStep.id.toString() : steps.length.toString(); // Abre o último passo por padrão se estiver completo
+    return activeStep ? activeStep.id.toString() : steps.length.toString();
   }, [steps]);
 
   // Função auxiliar para buscar imagens
@@ -163,12 +230,9 @@ const AnaliseLog = ({ steps }: AnaliseLogProps) => {
     <Card className="p-6 h-full shadow-lg">
       <h2 className="text-xl font-bold mb-4 text-foreground">Log de Análise</h2>
 
-      {/* O componente Acordeão é o que replica a "Sanfona" do seu design */}
       <Accordion type="single" defaultValue={defaultOpen} className="w-full">
         {steps.map((step) => (
-          // O value do AccordionItem é usado para controle de estado aberto/fechado
           <AccordionItem key={step.id} value={step.id.toString()}>
-            {/* HEADER da Sanfona: Mantém o visual com status e descrição */}
             <AccordionTrigger className="flex items-start justify-between py-3">
               <div className="flex items-start">
                 <StatusIcon status={step.status} />
@@ -181,7 +245,6 @@ const AnaliseLog = ({ steps }: AnaliseLogProps) => {
               </div>
             </AccordionTrigger>
 
-            {/* CONTEÚDO da Sanfona: Exibe as informações dinâmicas */}
             <AccordionContent className="pt-2 pb-4 text-sm text-muted-foreground ml-7 border-l-2 pl-4">
               {/* Passo 1: Pré-processamento */}
               {step.id === 1 && getImages(1).preprocessing_done && (
@@ -198,8 +261,17 @@ const AnaliseLog = ({ steps }: AnaliseLogProps) => {
                 />
               )}
 
-              {/* Passo 3: Log de Fallback Dinâmico */}
-              {step.id === 3 && <LogDisplay messages={step.logMessages} />}
+              {/* Passo 3: Log de Fallback Dinâmico (Tabela + Mensagens) */}
+              {step.id === 3 && (
+                <>
+                  {/* Tabela de Scores Iniciais */}
+                  {candidateData && candidateData.length > 0 && (
+                    <CandidateTable candidates={candidateData} />
+                  )}
+                  {/* Log de Tentativas (Mensagens) */}
+                  <LogDisplay messages={step.logMessages} />
+                </>
+              )}
 
               {/* Passo 4: Recorte da Placa (Vencedor) */}
               {step.id === 4 && getImages(4).candidate_crop_attempt && (

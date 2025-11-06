@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge";
 type DeleteStatus = "idle" | "running" | "success" | "failed";
 
 export interface Registro {
-  // CORRIGIDO: Aceita string (WS) ou number (DB), como definido no hook
+  // Aceita string (WS) ou number (DB)
   id: number | string;
   placa: string;
   dataHora: string;
@@ -71,6 +71,10 @@ const TabelaRegistros = ({
     return <Badge variant={variant}>{tipo}</Badge>;
   };
 
+  // Helper para verificar se o ID é válido (não é null, undefined, ou string vazia)
+  const isIdValid = (id: number | string | undefined | null) =>
+    !!id && id !== "undefined";
+
   // Verifica se a deleção está em andamento.
   const isDeleting = deleteStatus === "running";
 
@@ -96,6 +100,7 @@ const TabelaRegistros = ({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {registros.map((registro) => (
             <Card
+              // O key é o único lugar onde um ID inválido pode ser problemático se for null, mas o React trata isso.
               key={registro.id}
               className="group hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer"
               onClick={() => setSelectedRegistro(registro)}
@@ -116,7 +121,10 @@ const TabelaRegistros = ({
                   </div>
                   <div className="flex items-center gap-2">
                     {renderTipoPlaca(registro.tipo_placa)}
-                    <Badge className="font-mono">#{registro.id}</Badge>
+                    <Badge className="font-mono">
+                      {/* CORREÇÃO APLICADA AQUI: Garante que um valor seja renderizado */}
+                      {isIdValid(registro.id) ? `#${registro.id}` : "#?"}
+                    </Badge>
                   </div>
                 </div>
 
@@ -158,7 +166,7 @@ const TabelaRegistros = ({
                       e.stopPropagation();
                       setSelectedRegistro(registro);
                     }}
-                    disabled={isDeleting}
+                    disabled={isDeleting || !isIdValid(registro.id)} // Desabilita se ID inválido
                   >
                     <Eye className="w-4 h-4 mr-1" />
                     Ver Detalhes
@@ -166,8 +174,8 @@ const TabelaRegistros = ({
                   <Button
                     variant="destructive"
                     size="sm"
-                    // Desabilita durante o processamento de deleção
-                    disabled={isDeleting}
+                    // Desabilita durante o processamento de deleção OU se o ID for inválido
+                    disabled={isDeleting || !isIdValid(registro.id)}
                     onClick={(e) => {
                       e.stopPropagation();
                       handleDelete(registro.id, registro.placa);
@@ -254,7 +262,6 @@ const TabelaRegistros = ({
                   </div>
                 </Card>
               </div>
-              {/* FIM: grid grid-cols-1 md:grid-cols-3 gap-4 */}
 
               <Separator />
 
@@ -288,7 +295,10 @@ const TabelaRegistros = ({
                   </Badge>
                 </span>
                 <span className="font-mono font-semibold text-foreground">
-                  #{selectedRegistro.id}
+                  {/* CORREÇÃO APLICADA AQUI: Exibe o ID válido ou 'ID INVÁLIDO' */}
+                  {isIdValid(selectedRegistro.id)
+                    ? `#${selectedRegistro.id}`
+                    : "ID INVÁLIDO"}
                 </span>
               </div>
             </div>

@@ -33,13 +33,28 @@ export const useRegistroWebSocket = (): WebSocketReturn => {
   const wsRef = useRef<WebSocket | null>(null);
 
   // Mapeador de campo
-  const mapBackendToFrontend = (data: any): Registro => ({
-    id: data.id || data.id_registro, // Usa o ID do DB
-    placa: data.placa,
-    dataHora: data.data,
-    imagemUrl: data.imagem,
-    tipo_placa: data.tipo_placa,
-  });
+  const mapBackendToFrontend = (data: any): Registro => {
+    // CORREÇÃO CRÍTICA DO ID:
+    // 1. Tenta usar data.id (do HTTP fetch e do Controller/Broadcast).
+    // 2. Se data.id for null ou undefined (??), tenta data.id_registro.
+    // 3. Se ambos forem null/undefined, usa o fallback de Date.now()
+
+    const dbId = data.id ?? data.id_registro;
+
+    // O ID final só é o fallback (timestamp) se dbId for estritamente null/undefined
+    const finalId = dbId ?? Date.now() + Math.random();
+
+    // DEBUG: Para verificar no console o valor real que está sendo lido
+    console.log(`[DEBUG ID] Recebido: ${data.id}. Final ID: ${finalId}`);
+
+    return {
+      id: finalId,
+      placa: data.placa,
+      dataHora: data.data,
+      imagemUrl: data.imagem,
+      tipo_placa: data.tipo_placa,
+    };
+  };
 
   // --- 1. BUSCA INICIAL (HTTP) ---
   useEffect(() => {
@@ -71,10 +86,13 @@ export const useRegistroWebSocket = (): WebSocketReturn => {
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        if (data.placa && (data.id || data.id_registro)) {
-          // Verifica se tem ID
+
+        // Validação de segurança: verifica se há placa e ID (não null/undefined)
+        const isValidBroadcast =
+          data.placa && (data.id !== null || data.id_registro !== null);
+
+        if (isValidBroadcast) {
           const novoRegistro = mapBackendToFrontend(data);
-          // Adiciona o novo registro ao topo da lista em tempo real
           setRegistros((prev) => [novoRegistro, ...prev]);
         }
       } catch (error) {
@@ -101,7 +119,7 @@ export const useRegistroWebSocket = (): WebSocketReturn => {
   const deleteRegistro = useCallback(async (id: number | string) => {
     setDeleteStatus("running");
     try {
-      // Chamada de DELETE para o backend (ajustar URL se necessário)
+      // Chamada de DELETE para o backend (o ID agora deve ser válido)
       const response = await axios.delete(
         `${API_BASE_URL}/api/v1/registros/${id}`
       );

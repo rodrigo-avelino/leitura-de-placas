@@ -1,5 +1,5 @@
 import uvicorn
-from fastapi import FastAPI, WebSocket, File, UploadFile, Depends, Query, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, File, UploadFile, Depends, Query, WebSocketDisconnect, HTTPException, status # << ADIÇÃO
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.concurrency import run_in_threadpool
 from datetime import datetime, date
@@ -23,6 +23,7 @@ class RegistroResponse(pydantic.BaseModel):
     tipo_placa: Optional[str] = None
     data: str
     imagem: Optional[str] = None # Imagem Base64
+    id: Optional[int] = None
 
 class HealthCheck(pydantic.BaseModel):
     status: str
@@ -63,16 +64,13 @@ class ConnectionManager:
         """Envia a mensagem (o novo registro) para todos os clientes ativos."""
         send_tasks = [connection.send_json(message) for connection in self.active_connections]
         
-        # Executa as tarefas de envio
         done, pending = await asyncio.wait(
             send_tasks, return_when=asyncio.FIRST_EXCEPTION
         )
         
-        # Remove conexões que falharam no broadcast (conexões quebradas)
         for task in done:
             if task.exception():
                 try:
-                    # Encontra a conexão a partir do objeto coroutine
                     coro = task.get_coro()
                     ws = coro.get_wrapped_object()
                     self.active_connections.remove(ws)
@@ -130,15 +128,29 @@ async def consultar_registros(
     registros = await run_in_threadpool(PlacaController.consultarRegistros, arg=filtros)
     return registros
 
+# --- NOVO ENDPOINT DE DELEÇÃO (DELETE) ---
+@app.delete("/api/v1/registros/{registro_id}", status_code=status.HTTP_204_NO_CONTENT)
+def deletar_registro_http(registro_id: int):
+    """
+    Endpoint HTTP para deletar um registro com base no ID.
+    Retorna 204 No Content em caso de sucesso.
+    """
+    sucesso = PlacaController.deletarRegistro(registro_id)
+    
+    if not sucesso:
+        # Retorna 404 se o registro não foi encontrado (o que o frontend espera)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail=f"Registro com ID {registro_id} não encontrado."
+        )
+    # Retorna 204 automaticamente devido ao status_code no decorador
+    return
 
 # --- ENDPOINT WEBSOCKET PARA PROCESSAMENTO (ALPR) ---
 @app.websocket("/ws/processar-imagem")
 async def processar_imagem_ws(websocket: WebSocket):
     await websocket.accept()
     main_event_loop = asyncio.get_running_loop()
-    
-    # Variável para armazenar o resultado final do registro (se bem-sucedido)
-    registro_salvo = None 
     
     try:
         image_bytes = await websocket.receive_bytes() 
@@ -164,7 +176,6 @@ async def processar_imagem_ws(websocket: WebSocket):
                 main_event_loop
             )
 
-        # Assumindo que PlacaController.processarImagem agora retorna o RegistroResponse salvo
         final_result = await run_in_threadpool(
             PlacaController.processarImagem,
             source_image=io.BytesIO(image_bytes),
@@ -175,12 +186,12 @@ async def processar_imagem_ws(websocket: WebSocket):
         # --- LÓGICA DE WEBSOCKET DE REGISTRO (Broadcast) ---
         if final_result.get("status") == "ok":
             registro_salvo = {
+                "id": final_result.get("id"),
                 "placa": final_result.get("texto_final"),
                 "tipo_placa": final_result.get("padrao_placa"),
-                "data": final_result.get("data_registro"), # Deve ser retornado pelo Controller
-                "imagem": final_result.get("imagem_base64"), # Deve ser retornado pelo Controller
+                "data": final_result.get("data_registro"), 
+                "imagem": final_result.get("imagem_base64"), 
             }
-            # Envia o registro salvo para todos os clientes em /ws/registros
             asyncio.run_coroutine_threadsafe(
                  registro_manager.broadcast(registro_salvo),
                  main_event_loop
@@ -192,7 +203,8 @@ async def processar_imagem_ws(websocket: WebSocket):
             "status": final_result.get("status"),
             "texto_final": final_result.get("texto_final"),
             "padrao_placa": final_result.get("padrao_placa"),
-            "data_registro": final_result.get("data_registro") # Opcional
+            "id": final_result.get("id"),
+            "data_registro": final_result.get("data_registro")
         })
         await websocket.close()
 
@@ -212,8 +224,6 @@ async def processar_imagem_ws(websocket: WebSocket):
 async def websocket_registros_endpoint(websocket: WebSocket):
     await registro_manager.connect(websocket)
     try:
-        # Mantém a conexão aberta. O receive_text aqui é apenas para esperar
-        # a desconexão do cliente, pois a API não espera dados dele, apenas envia.
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:

@@ -1,61 +1,123 @@
+// hooks/usePlateWebSocket.ts
+
 import { useState, useRef, useCallback, useMemo } from "react";
+import { toast } from "sonner";
+import { format } from "date-fns"; // IMPORTADO
 
 // --- TIPAGENS ---
-export interface LogEntry {
-  step: string;
-  message?: string;
-  image?: string; // Imagens Base64
-  candidate_rank?: number;
-  ocr_text_raw?: string;
-  valid_plates?: string[];
-  placa?: string; // Placa do candidate_chosen
-  padrao?: string; // Padrão do candidate_chosen
+type StepStatus = "pending" | "processing" | "completed" | "failed";
 
-  // Propriedades do Resultado Final (final_result)
-  status?: "ok" | "invalido";
-  texto_final?: string;
-  padrao_placa?: string; // Corrigido para final_result
-
-  data?: any;
+export interface CandidateData {
+  rank: number;
+  score: number;
+  seg_score: number;
+  cores: { [key: string]: number };
 }
 
-type ProcessingStatus = "idle" | "running" | "success" | "failed";
+export interface Step {
+  id: number;
+  name: string;
+  description: string;
+  status: StepStatus;
+  images: { [key: string]: string | null };
+  logMessages: string[];
+  result?: {
+    placa: string | null;
+    padrao: string | null;
+    candidato: number | null;
+  };
+}
 
-// Interface do Objeto de Retorno
-interface WebSocketReturn {
+export interface FinalResult {
+  status: "ok" | "fail" | "error";
+  texto_final: string | null;
+  padrao_placa: string | null;
+  id: number | null;
+  data_registro: string | null;
+}
+
+// Interface de Retorno COMPLETA
+interface UsePlateWebSocketReturn {
   isProcessing: boolean;
-  log: LogEntry[];
-  finalPlate: string | null;
-  status: ProcessingStatus;
-  processImage: (file: File) => void;
-  closeConnection: () => void;
+  steps: Step[];
+  log: any[];
+  finalResult: FinalResult | null;
+  imageToProcessUrl: string | null;
+  candidateData: CandidateData[];
 
-  // Imagens Base64 individuais (para ImageDisplay e AnaliseLog)
-  originalImageBase64: string | null;
   croppedPlateBase64: string | null;
   binarizedImageBase64: string | null;
   segmentedImageBase64: string | null;
 
-  // Propriedades Adicionais (para facilitar o uso na UI)
-  candidateRankWinner: number | null;
-  currentLogMessages: string[];
-  currentStepImages: { [key: string]: string | null }; // Objeto agrupador para AnaliseLog
+  // MUDANÇA AQUI: Agora espera o File E a data
+  processImage: (file: File, captureDateTime: Date) => void;
+  resetState: () => void;
 }
 
-export const usePlateWebSocket = (): WebSocketReturn => {
-  // --- ESTADOS DE CONTROLE E RESULTADO ---
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [log, setLog] = useState<LogEntry[]>([]);
-  const [finalPlate, setFinalPlate] = useState<string | null>(null);
-  const [status, setStatus] = useState<ProcessingStatus>("idle");
-  const [candidateRankWinner, setCandidateRankWinner] = useState<number | null>(
-    null
-  );
+const INITIAL_STEPS: Step[] = [
+  {
+    id: 1,
+    name: "Pré-processamento da Imagem",
+    description: "Ajuste de cor, contraste e ruído.",
+    status: "pending",
+    images: {},
+    logMessages: [],
+  },
+  {
+    id: 2,
+    name: "Detecção de Contornos (Candidatos)",
+    description: "Identifica regiões da placa por morfologia.",
+    status: "pending",
+    images: {},
+    logMessages: [],
+  },
+  {
+    id: 3,
+    name: "Filtragem e Validação Inicial (Fallback)",
+    description: "Ranqueia candidatos e inicia testes de OCR e cor.",
+    status: "pending",
+    images: {},
+    logMessages: [],
+  },
+  {
+    id: 4,
+    name: "Recorte da Placa (Vencedor)",
+    description: "Isola e alinha o melhor candidato.",
+    status: "pending",
+    images: {},
+    logMessages: [],
+  },
+  {
+    id: 5,
+    name: "Binarização e Segmentação",
+    description: "Prepara os caracteres para leitura do OCR.",
+    status: "pending",
+    images: {},
+    logMessages: [],
+  },
+  {
+    id: 6,
+    name: "Validação Final e Registro",
+    description: "Verifica padrões, aplica OCR final e registra o resultado.",
+    status: "pending",
+    images: {},
+    logMessages: [],
+  },
+];
 
-  // --- ESTADOS DE IMAGEM INDIVIDUAL (Para Miniaturas e AnaliseLog) ---
-  const [originalImageBase64, setOriginalImageBase64] = useState<string | null>(
+const WEBSOCKET_URL = "ws://127.0.0.1:8000/ws/processar-imagem";
+
+export const usePlateWebSocket = (): UsePlateWebSocketReturn => {
+  // ... (Estados permanecem iguais) ...
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [steps, setSteps] = useState<Step[]>(INITIAL_STEPS);
+  const [log, setLog] = useState<any[]>([]);
+  const [finalResult, setFinalResult] = useState<FinalResult | null>(null);
+  const [imageToProcessUrl, setImageToProcessUrl] = useState<string | null>(
     null
   );
+  const [candidateData, setCandidateData] = useState<CandidateData[]>([]);
+
   const [croppedPlateBase64, setCroppedPlateBase64] = useState<string | null>(
     null
   );
@@ -66,219 +128,229 @@ export const usePlateWebSocket = (): WebSocketReturn => {
     string | null
   >(null);
 
-  // Novos estados para as imagens intermediárias (Passos 1 e 2 do AnaliseLog)
-  const [preprocessedImageBase64, setPreprocessedImageBase64] = useState<
-    string | null
-  >(null);
-  const [top5OverlayImageBase64, setTop5OverlayImageBase64] = useState<
-    string | null
-  >(null);
+  const resetState = useCallback(() => {
+    setIsProcessing(false);
+    setSteps(INITIAL_STEPS);
+    setLog([]);
+    setFinalResult(null);
+    setImageToProcessUrl(null);
+    setCandidateData([]);
 
-  const wsRef = useRef<WebSocket | null>(null);
+    setCroppedPlateBase64(null);
+    setBinarizedImageBase64(null);
+    setSegmentedImageBase64(null);
+  }, []);
 
-  // --- Lógica de compilação de logs de fallback para o Step 3 ---
-  const currentLogMessages = useMemo(() => {
-    return log
-      .filter(
-        (entry) =>
-          entry.step === "fallback_attempt" ||
-          entry.step === "ocr_attempt_result" ||
-          entry.step === "candidate_chosen" ||
-          entry.step === "fallback_failed_all"
-      )
-      .map((entry) => {
-        if (entry.step === "fallback_attempt") {
-          return `Tentando Candidato #${entry.candidate_rank}...`;
-        }
-        if (entry.step === "ocr_attempt_result") {
-          const isValid = entry.valid_plates && entry.valid_plates.length > 0;
-          const statusText = isValid ? "Válido" : "Inválido";
-          return ` -> Leitura: '${entry.ocr_text_raw}'. Resultado: ${statusText}.`;
-        }
-        if (entry.step === "candidate_chosen") {
-          return ` -> Decisão: Candidato #${entry.candidate_rank} ('${entry.placa}', ${entry.padrao}) selecionado!`;
-        }
-        if (entry.step === "fallback_failed_all") {
-          return entry.message || "Nenhum candidato produziu placa válida.";
-        }
-        return "";
-      })
-      .filter((msg) => msg.length > 0);
-  }, [log]);
+  // Helper para atualizar um passo específico (inalterado)
+  const updateStep = useCallback(
+    (stepId: number, status?: StepStatus, updates?: Partial<Step>) => {
+      setSteps((prevSteps) =>
+        prevSteps.map((step) => {
+          if (step.id === stepId) {
+            return {
+              ...step,
+              ...updates,
+              status: status !== undefined ? status : step.status,
+              images: { ...step.images, ...(updates?.images || {}) },
+              logMessages: [
+                ...step.logMessages,
+                ...(updates?.logMessages || []),
+              ],
+            };
+          }
+          if (status === "processing" && step.id < stepId) {
+            return { ...step, status: "completed" };
+          }
+          return step;
+        })
+      );
+    },
+    []
+  );
 
-  // --- Objeto agrupador de imagens (currentStepImages) ---
-  // Este objeto resolve o erro de tipagem e fornece todas as imagens para o AnaliseLog
-  const currentStepImages = useMemo(() => {
-    const imageMap: { [key: string]: string | null } = {};
-
-    // Adiciona todas as imagens dos estados individuais (garante que nada é perdido)
-    if (originalImageBase64) imageMap["original"] = originalImageBase64;
-    if (preprocessedImageBase64)
-      imageMap["preprocessing_done"] = preprocessedImageBase64;
-    if (top5OverlayImageBase64)
-      imageMap["top_5_overlay"] = top5OverlayImageBase64;
-    if (croppedPlateBase64)
-      imageMap["candidate_crop_attempt"] = croppedPlateBase64;
-    if (binarizedImageBase64)
-      imageMap["final_binarization"] = binarizedImageBase64;
-    if (segmentedImageBase64)
-      imageMap["final_segmentation"] = segmentedImageBase64;
-
-    // Adiciona as imagens que estão apenas no log (se houver alguma)
-    log.forEach((entry) => {
-      if (entry.image && !imageMap[entry.step]) {
-        imageMap[entry.step] = entry.image;
-      }
-    });
-
-    return imageMap;
-  }, [
-    log,
-    originalImageBase64,
-    croppedPlateBase64,
-    binarizedImageBase64,
-    segmentedImageBase64,
-    preprocessedImageBase64, // Dependência adicionada
-    top5OverlayImageBase64, // Dependência adicionada
-  ]);
-
+  // FUNÇÃO PRINCIPAL CORRIGIDA
   const processImage = useCallback(
-    (file: File) => {
-      // --- RESET DE ESTADOS ---
+    (file: File, captureDateTime: Date) => {
+      resetState();
       setIsProcessing(true);
-      setStatus("running");
-      setLog([]);
-      setFinalPlate(null);
-      setCandidateRankWinner(null);
-      setOriginalImageBase64(null);
-      setCroppedPlateBase64(null);
-      setBinarizedImageBase64(null);
-      setSegmentedImageBase64(null);
-      setPreprocessedImageBase64(null); // Reset
-      setTop5OverlayImageBase64(null); // Reset
+      const fileUrl = URL.createObjectURL(file);
+      setImageToProcessUrl(fileUrl);
+      let ws: WebSocket | null = null;
+      let toastId: string | number = toast.loading("Conectando ao servidor...");
 
-      const ws = new WebSocket("ws://127.0.0.1:8000/ws/processar-imagem");
-      wsRef.current = ws;
+      // 1. Serializa a data para a Query String
+      const isoDate = format(captureDateTime, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx");
+      const urlWithTime = `${WEBSOCKET_URL}?capture_time=${encodeURIComponent(
+        isoDate
+      )}`;
+
+      try {
+        ws = new WebSocket(urlWithTime); // Usa a URL com a data
+      } catch (error) {
+        toast.error(
+          "Não foi possível conectar ao WebSocket. Verifique o servidor."
+        );
+        toast.dismiss(toastId);
+        setIsProcessing(false);
+        return;
+      }
 
       ws.onopen = () => {
+        toast.dismiss(toastId);
+        toastId = toast.loading("Enviando imagem para análise...", {
+          id: "processing-status",
+        });
+
         const reader = new FileReader();
         reader.onload = (e) => {
-          if (e.target?.result instanceof ArrayBuffer) {
-            // Envia ArrayBuffer (bytes brutos) para o FastAPI
-            ws.send(e.target.result);
-          } else {
-            ws.close();
+          if (
+            ws &&
+            ws.readyState === 1 &&
+            e.target?.result instanceof ArrayBuffer
+          ) {
+            ws.send(e.target.result); // Envia bytes
           }
         };
         reader.readAsArrayBuffer(file);
       };
 
       ws.onmessage = (event) => {
+        if (typeof event.data !== "string") return;
+
         const data = JSON.parse(event.data);
+        setLog((prevLog) => [...prevLog, data]);
 
-        setLog((prev) => [...prev, data]);
-
-        // --- CAPTURA DE IMAGENS NOS ESTADOS INDIVIDUAIS ---
+        // --- CAPTURA DE IMAGENS INDIVIDUAIS (para o ImageDisplay) ---
         if (data.image) {
-          if (data.step === "original") {
-            setOriginalImageBase64(data.image);
-          }
-          if (data.step === "preprocessing_done") {
-            setPreprocessedImageBase64(data.image);
-          } // Captura Passo 1
-          if (data.step === "top_5_overlay") {
-            setTop5OverlayImageBase64(data.image);
-          } // Captura Passo 2
-
-          // O backend pode enviar o crop final com 'candidate_crop_attempt'
           if (data.step === "candidate_crop_attempt") {
             setCroppedPlateBase64(data.image);
           }
-
           if (data.step === "final_binarization") {
             setBinarizedImageBase64(data.image);
-          } // Captura Miniatura Binarização
+          }
           if (data.step === "final_segmentation") {
             setSegmentedImageBase64(data.image);
-          } // Captura Miniatura Segmentação
-        }
-
-        // --- CAPTURA DE RESULTADOS ---
-        if (data.step === "candidate_chosen") {
-          setFinalPlate(data.placa);
-          setCandidateRankWinner(data.candidate_rank);
-        }
-
-        // --- EVENTOS DE CONCLUSÃO / FALHA ---
-        if (data.step === "final_result") {
-          if (data.status === "ok") {
-            setStatus("success");
-          } else {
-            setStatus("failed");
           }
-          setIsProcessing(false);
-          ws.close();
         }
 
-        if (data.step === "fallback_failed_all" || data.step === "error") {
-          setStatus("failed");
-          setIsProcessing(false);
-          ws.close();
+        // ... (Restante da lógica do switch case para atualização de steps) ...
+        switch (data.step) {
+          case "start":
+            toast.dismiss("processing-status");
+            toast.loading("Processamento iniciado...", {
+              id: "processing-status",
+            });
+            updateStep(1, "processing");
+            break;
+          // ... (outros cases) ...
+          case "preprocessing_done":
+            updateStep(1, "completed", {
+              images: { preprocessing_done: data.image },
+            });
+            updateStep(2, "processing");
+            break;
+          case "top_5_overlay":
+            updateStep(2, "completed", {
+              images: { top_5_overlay: data.image },
+            });
+            updateStep(3, "processing");
+            break;
+          case "candidates_data":
+            setCandidateData(data.data);
+            break;
+          case "fallback_attempt":
+          case "ocr_attempt_result":
+          case "color_validation":
+            const logMessage =
+              data.message ||
+              `[Teste #${data.candidate_rank}] ${
+                data.log || data.ocr_text_raw
+              }`;
+            updateStep(3, "processing", { logMessages: [logMessage] });
+            break;
+          case "candidate_chosen":
+            updateStep(3, "completed", {
+              logMessages: [
+                `-> Decisão: Candidato #${data.candidate_rank} ('${data.placa}', ${data.padrao}) selecionado!`,
+              ],
+              result: {
+                placa: data.placa,
+                padrao: data.padrao,
+                candidato: data.candidate_rank,
+              },
+            });
+            updateStep(4, "processing");
+            break;
+          case "final_binarization":
+            updateStep(5, "processing");
+            break;
+          case "final_segmentation":
+            updateStep(5, "completed");
+            updateStep(6, "processing");
+            break;
+          case "final_result":
+            const success = data.status === "ok";
+            setFinalResult(data as FinalResult);
+            toast.dismiss("processing-status");
+            if (success) {
+              toast.success(
+                `Placa ${data.texto_final} registrada com sucesso!`
+              );
+              updateStep(6, "completed");
+            } else {
+              toast.error("Falha ao detectar uma placa válida.");
+              updateStep(6, "failed");
+            }
+            setIsProcessing(false);
+            ws?.close();
+            break;
+          case "error":
+            toast.dismiss("processing-status");
+            toast.error(`Erro no servidor: ${data.message}`);
+            setIsProcessing(false);
+            updateStep(6, "failed");
+            ws?.close();
+            break;
+          default:
+            break;
         }
-      };
-
-      ws.onerror = (error) => {
-        console.error("Erro no WebSocket:", error);
-        setStatus("failed");
-        setIsProcessing(false);
-        setLog((prev) => [
-          ...prev,
-          { step: "error", message: "Erro na conexão ou no servidor" },
-        ]);
       };
 
       ws.onclose = () => {
-        if (status === "running") {
-          setIsProcessing(false);
-          setStatus("failed");
-        }
+        setIsProcessing(false);
+        toast.dismiss("processing-status");
+      };
+
+      ws.onerror = (e) => {
+        console.error("WebSocket Error:", e);
+        toast.dismiss("processing-status");
+        toast.error("Erro inesperado na conexão WebSocket.");
+        setIsProcessing(false);
+        ws?.close();
+      };
+
+      // Cleanup function
+      return () => {
+        if (ws) ws.close();
+        URL.revokeObjectURL(fileUrl);
       };
     },
-    [status]
+    [resetState, updateStep]
   );
 
-  const closeConnection = useCallback(() => {
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
-    setIsProcessing(false);
-    setStatus("idle");
-    setLog([]);
-    setFinalPlate(null);
-    setCandidateRankWinner(null);
-    setOriginalImageBase64(null);
-    setCroppedPlateBase64(null);
-    setBinarizedImageBase64(null);
-    setSegmentedImageBase64(null);
-    setPreprocessedImageBase64(null);
-    setTop5OverlayImageBase64(null);
-  }, []);
-
-  // Objeto de retorno COMPLETO
   return {
     isProcessing,
+    steps,
     log,
-    finalPlate,
-    status,
-    processImage,
-    closeConnection,
-    originalImageBase64,
+    finalResult,
+    imageToProcessUrl,
+    candidateData,
+
     croppedPlateBase64,
     binarizedImageBase64,
     segmentedImageBase64,
-    candidateRankWinner,
-    currentLogMessages,
-    currentStepImages,
+
+    processImage,
+    resetState,
   };
 };

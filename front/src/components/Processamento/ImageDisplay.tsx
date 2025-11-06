@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   Card,
   CardContent,
@@ -7,80 +7,96 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, Zap, RotateCcw, CheckCircle, XCircle } from "lucide-react";
+import { Loader2, Zap, RotateCcw, CheckCircle2, XCircle } from "lucide-react";
 
-// --- INTERFACE CORRIGIDA ---
-interface ImageDisplayProps {
-  // Input/Visualização
-  imageUrl: string | null;
+// --- TIPAGENS (Devem ser as mesmas do Processar.tsx e do Hook) ---
+type ProcessingStatus = "idle" | "running" | "success" | "failed";
 
-  // Output das Imagens (Podem ser nulas se o processamento não tiver chegado lá)
+interface FinalResult {
+  status: "ok" | "fail" | "error";
+  texto_final: string | null;
+  // Adicione outros campos necessários se forem usados aqui (ex: croppedPlate, binarizedImage)
+}
+
+// Interface principal do componente
+export interface ImageDisplayProps {
+  src: string | null; // URL Blob da imagem original para visualização
+  finalResult: FinalResult | null;
+  onProcess: () => void;
+  onClear: () => void;
+  isProcessing: boolean;
+
+  // Imagens das miniaturas (Base64 passadas pelo hook)
   croppedPlate: string | null;
   binarizedImage: string | null;
   segmentedImage: string | null;
-  placaLida: string | null; // <<< Agora aceita null
-
-  // Controles e Status
-  onClear: () => void;
-  onProcess: () => void;
-  isProcessing: boolean;
-  status: "idle" | "running" | "success" | "failed";
 }
+// --- FIM das TIPAGENS ---
+
+// Sub-componente para Miniaturas de Etapas Finais
+const ImageThumbnail: React.FC<{ title: string; image: string | null }> = ({
+  title,
+  image,
+}) => (
+  <div className="text-center">
+    <p className="text-xs text-gray-500 mb-1 font-medium">{title}</p>
+    <div className="w-full aspect-video border rounded-md overflow-hidden bg-gray-100 flex items-center justify-center">
+      {image ? (
+        // Exibe a imagem Base64
+        <img src={image} alt={title} className="w-full h-full object-contain" />
+      ) : (
+        <span className="text-xs text-gray-400 p-1">Aguardando...</span>
+      )}
+    </div>
+  </div>
+);
 
 const ImageDisplay: React.FC<ImageDisplayProps> = ({
-  imageUrl,
-  croppedPlate,
-  binarizedImage,
-  segmentedImage,
-  placaLida,
-  onClear,
+  src,
+  finalResult,
   onProcess,
+  onClear,
   isProcessing,
-  status,
+  croppedPlate, // Miniaturas
+  binarizedImage, // Miniaturas
+  segmentedImage, // Miniaturas
 }) => {
-  const getStatusColor = (currentStatus: typeof status) => {
-    switch (currentStatus) {
-      case "running":
-        return "border-blue-500 bg-blue-50 text-blue-800";
-      case "success":
-        return "border-green-500 bg-green-50 text-green-800";
-      case "failed":
-        return "border-red-500 bg-red-50 text-red-800";
-      default:
-        return "border-gray-300 bg-white text-gray-700";
-    }
-  };
+  // Determina o status geral da Card
+  const statusText = useMemo(() => {
+    if (isProcessing) return "PROCESSANDO...";
+    if (finalResult?.status === "ok") return "ANÁLISE CONCLUÍDA";
+    if (finalResult?.status === "fail" || finalResult?.status === "error")
+      return "FALHA NA ANÁLISE";
+    if (src) return "PRONTO PARA ANÁLISE";
+    return "SELECIONE A IMAGEM";
+  }, [isProcessing, finalResult, src]);
 
-  const getStatusText = (currentStatus: typeof status) => {
-    switch (currentStatus) {
-      case "running":
-        return "PROCESSANDO...";
-      case "success":
-        return `SUCESSO! Placa: ${placaLida || "N/A"}`;
-      case "failed":
-        return "FALHA NA DETECÇÃO";
-      default:
-        return "PRONTO PARA ANÁLISE";
-    }
-  };
+  const statusColor = useMemo(() => {
+    if (isProcessing) return "border-blue-500 bg-blue-50 text-blue-800";
+    if (finalResult?.status === "ok")
+      return "border-green-500 bg-green-50 text-green-800";
+    if (finalResult?.status === "fail" || finalResult?.status === "error")
+      return "border-red-500 bg-red-50 text-red-800";
+    return "border-gray-300 bg-white text-gray-700";
+  }, [isProcessing, finalResult]);
+
+  const canProcess = !isProcessing && src;
 
   return (
-    <Card className={`shadow-xl transition-all ${getStatusColor(status)}`}>
+    <Card className={`shadow-xl transition-all ${statusColor}`}>
       <CardHeader className="p-4 border-b">
         <CardTitle className="flex items-center justify-between text-lg">
           Imagem Atual
-          <span className="text-sm font-semibold uppercase">
-            {getStatusText(status)}
-          </span>
+          <span className="text-sm font-semibold uppercase">{statusText}</span>
         </CardTitle>
       </CardHeader>
 
       <CardContent className="p-4 space-y-4">
         {/* Imagem Principal */}
         <div className="relative w-full aspect-video rounded-lg overflow-hidden border">
-          {imageUrl ? (
+          {src ? (
             <img
-              src={imageUrl}
+              src={src}
               alt="Imagem Original"
               className="w-full h-full object-cover"
             />
@@ -97,7 +113,7 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({
           )}
         </div>
 
-        {/* Miniaturas de Processamento (Recorte, Binarização, Segmentação) */}
+        {/* Miniaturas de Processamento */}
         <div className="grid grid-cols-3 gap-2">
           <ImageThumbnail title="Recorte (Candidato)" image={croppedPlate} />
           <ImageThumbnail title="Binarização (Final)" image={binarizedImage} />
@@ -106,6 +122,7 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({
       </CardContent>
 
       <CardFooter className="flex justify-between p-4 border-t">
+        {/* Botão Limpar */}
         <Button
           onClick={onClear}
           variant="outline"
@@ -115,9 +132,10 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({
           <RotateCcw className="mr-2 h-4 w-4" /> Limpar
         </Button>
 
+        {/* Botão Iniciar Análise */}
         <Button
           onClick={onProcess}
-          disabled={!imageUrl || isProcessing}
+          disabled={!canProcess}
           className="bg-indigo-600 hover:bg-indigo-700 transition-colors"
         >
           {isProcessing ? (
@@ -136,22 +154,5 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({
     </Card>
   );
 };
-
-// Sub-componente para Miniaturas
-const ImageThumbnail: React.FC<{ title: string; image: string | null }> = ({
-  title,
-  image,
-}) => (
-  <div className="text-center">
-    <p className="text-xs text-gray-500 mb-1 font-medium">{title}</p>
-    <div className="w-full aspect-video border rounded-md overflow-hidden bg-gray-100 flex items-center justify-center">
-      {image ? (
-        <img src={image} alt={title} className="w-full h-full object-contain" />
-      ) : (
-        <span className="text-xs text-gray-400 p-1">Aguardando...</span>
-      )}
-    </div>
-  </div>
-);
 
 export default ImageDisplay;
