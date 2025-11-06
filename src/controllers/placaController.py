@@ -171,6 +171,7 @@ class PlacaController:
 
             try:
                 crop_bgr = Recorte.executar(img_bgr, candidate_quad)
+                print(f"[DEBUG CROP] Candidato #{i+1}: Crop shape = {crop_bgr.shape if crop_bgr is not None else 'None'}", file=sys.stderr)
                 _emit({"step": "candidate_crop_attempt", "candidate_rank": i + 1, "image": crop_bgr})
 
                 texto_ocr, confiancas = OCR.executarImg(crop_bgr)

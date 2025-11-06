@@ -112,7 +112,6 @@ venv.bak/
 /out
 /public/build
 /es
-/lib
 
 # Framework Specific (Choose the ones you use)
 .vite/

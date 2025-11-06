@@ -30,7 +30,7 @@ class Persistencia:
                 source_image=buf_source.tobytes(),
                 plate_crop_image=buf_crop.tobytes(),
                 annotated_image=buf_annot.tobytes(),
-                created_at=data_captura or datetime.utcnow()
+                created_at=data_captura or datetime.now()  # Alterado de utcnow para now (horário local)
             )
 
             db.add(novo_registro)

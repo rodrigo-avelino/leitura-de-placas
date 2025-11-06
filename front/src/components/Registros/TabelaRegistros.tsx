@@ -10,7 +10,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Eye, Trash2, Calendar, Clock, Car, Loader2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Eye, Trash2, Calendar, Clock, Car, Loader2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
@@ -43,6 +53,9 @@ const TabelaRegistros = ({
   const [selectedRegistro, setSelectedRegistro] = useState<Registro | null>(
     null
   );
+  const [registroToDelete, setRegistroToDelete] = useState<Registro | null>(
+    null
+  );
 
   // Lógica para mostrar feedback visual do status de deleção
   useMemo(() => {
@@ -55,13 +68,27 @@ const TabelaRegistros = ({
     }
   }, [deleteStatus]);
 
-  const handleDelete = (id: number | string, placa: string) => {
+  const handleDeleteClick = (registro: Registro) => {
+    setRegistroToDelete(registro);
+  };
+
+  const confirmDelete = () => {
+    if (!registroToDelete) return;
+    
     // Mostra o feedback de carregamento
-    toast.loading(`Removendo registro da placa ${placa}...`, {
+    toast.loading(`Removendo registro da placa ${registroToDelete.placa}...`, {
       id: `delete-progress`,
     });
+    
     // Chama o handler do componente pai (que executa o deleteRegistro(id) do hook)
-    onDelete(id);
+    onDelete(registroToDelete.id);
+    
+    // Fecha o modal
+    setRegistroToDelete(null);
+  };
+
+  const cancelDelete = () => {
+    setRegistroToDelete(null);
   };
 
   // Helper para exibir o Badge de tipo de placa
@@ -178,7 +205,7 @@ const TabelaRegistros = ({
                     disabled={isDeleting || !isIdValid(registro.id)}
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleDelete(registro.id, registro.placa);
+                      handleDeleteClick(registro);
                     }}
                   >
                     {isDeleting ? (
@@ -305,6 +332,56 @@ const TabelaRegistros = ({
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Modal de Confirmação de Exclusão */}
+      <AlertDialog open={!!registroToDelete} onOpenChange={(open) => !open && cancelDelete()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 rounded-full bg-destructive/10">
+                <AlertTriangle className="w-6 h-6 text-destructive" />
+              </div>
+              <AlertDialogTitle className="text-xl">
+                Confirmar Exclusão
+              </AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="text-base space-y-3 pt-2">
+              <p>
+                Tem certeza que deseja excluir o registro da placa{" "}
+                <span className="font-mono font-bold text-foreground">
+                  {registroToDelete?.placa}
+                </span>
+                ?
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Esta ação não pode ser desfeita. O registro será permanentemente removido do banco de dados.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-2">
+            <AlertDialogCancel onClick={cancelDelete} disabled={isDeleting}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={isDeleting}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Excluir Registro
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

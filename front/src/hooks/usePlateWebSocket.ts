@@ -7,6 +7,18 @@ import { format } from "date-fns"; // IMPORTADO
 // --- TIPAGENS ---
 type StepStatus = "pending" | "processing" | "completed" | "failed";
 
+interface WebSocketMessage {
+  step: string;
+  candidate_rank?: number;
+  placa?: string;
+  padrao?: string;
+  image?: string;
+  message?: string;
+  log?: string;
+  ocr_text_raw?: string;
+  [key: string]: unknown;
+}
+
 export interface CandidateData {
   rank: number;
   score: number;
@@ -40,7 +52,7 @@ export interface FinalResult {
 interface UsePlateWebSocketReturn {
   isProcessing: boolean;
   steps: Step[];
-  log: any[];
+  log: WebSocketMessage[];
   finalResult: FinalResult | null;
   imageToProcessUrl: string | null;
   candidateData: CandidateData[];
@@ -111,7 +123,7 @@ export const usePlateWebSocket = (): UsePlateWebSocketReturn => {
   // ... (Estados permanecem iguais) ...
   const [isProcessing, setIsProcessing] = useState(false);
   const [steps, setSteps] = useState<Step[]>(INITIAL_STEPS);
-  const [log, setLog] = useState<any[]>([]);
+  const [log, setLog] = useState<WebSocketMessage[]>([]);
   const [finalResult, setFinalResult] = useState<FinalResult | null>(null);
   const [imageToProcessUrl, setImageToProcessUrl] = useState<string | null>(
     null
@@ -127,6 +139,9 @@ export const usePlateWebSocket = (): UsePlateWebSocketReturn => {
   const [segmentedImageBase64, setSegmentedImageBase64] = useState<
     string | null
   >(null);
+
+  // Ref para acessar o log atual sem re-render
+  const logRef = useRef<WebSocketMessage[]>([]);
 
   const resetState = useCallback(() => {
     setIsProcessing(false);
@@ -218,22 +233,18 @@ export const usePlateWebSocket = (): UsePlateWebSocketReturn => {
         if (typeof event.data !== "string") return;
 
         const data = JSON.parse(event.data);
-        setLog((prevLog) => [...prevLog, data]);
+        
+        // Debug: Log de TODAS as mensagens recebidas
+        console.log('[WebSocket] Mensagem recebida:', data.step, data.candidate_rank ? `(rank: ${data.candidate_rank})` : '');
+        
+        // Atualiza o log e o ref
+        setLog((prevLog) => {
+          const newLog = [...prevLog, data];
+          logRef.current = newLog;
+          return newLog;
+        });
 
-        // --- CAPTURA DE IMAGENS INDIVIDUAIS (para o ImageDisplay) ---
-        if (data.image) {
-          if (data.step === "candidate_crop_attempt") {
-            setCroppedPlateBase64(data.image);
-          }
-          if (data.step === "final_binarization") {
-            setBinarizedImageBase64(data.image);
-          }
-          if (data.step === "final_segmentation") {
-            setSegmentedImageBase64(data.image);
-          }
-        }
-
-        // ... (Restante da lógica do switch case para atualização de steps) ...
+        // --- PROCESSAMENTO DE MENSAGENS DO WEBSOCKET ---
         switch (data.step) {
           case "start":
             toast.dismiss("processing-status");
@@ -242,53 +253,136 @@ export const usePlateWebSocket = (): UsePlateWebSocketReturn => {
             });
             updateStep(1, "processing");
             break;
-          // ... (outros cases) ...
+
           case "preprocessing_done":
             updateStep(1, "completed", {
               images: { preprocessing_done: data.image },
             });
             updateStep(2, "processing");
             break;
+
           case "top_5_overlay":
             updateStep(2, "completed", {
               images: { top_5_overlay: data.image },
             });
             updateStep(3, "processing");
             break;
+
           case "candidates_data":
             setCandidateData(data.data);
             break;
+
           case "fallback_attempt":
           case "ocr_attempt_result":
-          case "color_validation":
+          case "color_validation": {
             const logMessage =
               data.message ||
               `[Teste #${data.candidate_rank}] ${
-                data.log || data.ocr_text_raw
+                data.log || data.ocr_text_raw || ""
               }`;
             updateStep(3, "processing", { logMessages: [logMessage] });
             break;
-          case "candidate_chosen":
+          }
+
+          case "candidate_crop_attempt":
+            // Armazena temporariamente, mas não atualiza miniaturas ainda
+            // Apenas quando soubermos qual é o vencedor
+            console.log('[WebSocket] candidate_crop_attempt recebido - Rank:', data.candidate_rank);
+            console.log('[WebSocket] Tem imagem?', !!data.image);
+            if (data.image) {
+              console.log('[WebSocket] Tamanho da imagem:', data.image.length, 'caracteres');
+              console.log('[WebSocket] Primeiros 50 chars:', data.image.substring(0, 50));
+            }
+            break;
+
+          case "candidate_chosen": {
+            const winnerRank = data.candidate_rank;
+            console.log('[WebSocket] ========================================');
+            console.log('[WebSocket] Candidato escolhido:', winnerRank);
+            console.log('[WebSocket] Log atual tem', logRef.current.length, 'mensagens');
+            
             updateStep(3, "completed", {
               logMessages: [
-                `-> Decisão: Candidato #${data.candidate_rank} ('${data.placa}', ${data.padrao}) selecionado!`,
+                `-> Decisão: Candidato #${winnerRank} ('${data.placa}', ${data.padrao}) selecionado!`,
               ],
               result: {
                 placa: data.placa,
                 padrao: data.padrao,
-                candidato: data.candidate_rank,
+                candidato: winnerRank,
               },
             });
-            updateStep(4, "processing");
+            
+            // Função para buscar e aplicar o crop
+            const findAndApplyCrop = () => {
+              const currentLog = logRef.current;
+              
+              // Debug: Mostra todos os crops disponíveis
+              const allCrops = currentLog.filter((l: WebSocketMessage) => l.step === "candidate_crop_attempt");
+              console.log('[WebSocket] Total de crops no log:', allCrops.length);
+              allCrops.forEach((crop, idx) => {
+                console.log(`[WebSocket] Crop ${idx + 1}: rank=${crop.candidate_rank}, temImagem=${!!crop.image}, tamanho=${crop.image?.length || 0}`);
+              });
+              
+              const winnerCrop = currentLog.find(
+                (l: WebSocketMessage) => 
+                  l.step === "candidate_crop_attempt" && 
+                  l.candidate_rank === winnerRank
+              );
+              
+              if (winnerCrop && winnerCrop.image) {
+                console.log('[WebSocket] ✅ Crop do vencedor ENCONTRADO!');
+                console.log('[WebSocket] Rank:', winnerRank);
+                console.log('[WebSocket] Tamanho da imagem:', winnerCrop.image.length, 'caracteres');
+                console.log('[WebSocket] Primeiros 100 chars:', winnerCrop.image.substring(0, 100));
+                
+                setCroppedPlateBase64(winnerCrop.image);
+                updateStep(4, "completed", {
+                  images: { candidate_crop_attempt: winnerCrop.image },
+                });
+                return true;
+              } else {
+                console.warn('[WebSocket] ⚠️  Crop ainda não disponível, tentando novamente em 100ms...');
+                return false;
+              }
+            };
+            
+            // Tenta buscar o crop imediatamente
+            if (!findAndApplyCrop()) {
+              // Se não encontrou, tenta novamente após um pequeno delay
+              setTimeout(() => {
+                if (!findAndApplyCrop()) {
+                  console.error('[WebSocket] ❌ Crop do vencedor NÃO encontrado após retry!');
+                  console.error('[WebSocket] Rank procurado:', winnerRank);
+                  updateStep(4, "failed");
+                }
+              }, 100);
+            }
+            
+            console.log('[WebSocket] ========================================');
             break;
+          }
+
           case "final_binarization":
-            updateStep(5, "processing");
+            // Atualiza o Step 5 e a miniatura da binarização
+            console.log('[WebSocket] Binarização recebida');
+            setBinarizedImageBase64(data.image);
+            updateStep(5, "processing", {
+              images: { final_binarization: data.image },
+            });
             break;
-          case "final_segmentation":
-            updateStep(5, "completed");
+
+          case "final_segmentation": {
+            // Atualiza o Step 5 e a miniatura de segmentação
+            console.log('[WebSocket] Segmentação recebida');
+            setSegmentedImageBase64(data.image);
+            updateStep(5, "completed", {
+              images: { final_segmentation: data.image },
+            });
             updateStep(6, "processing");
             break;
-          case "final_result":
+          }
+
+          case "final_result": {
             const success = data.status === "ok";
             setFinalResult(data as FinalResult);
             toast.dismiss("processing-status");
@@ -296,21 +390,38 @@ export const usePlateWebSocket = (): UsePlateWebSocketReturn => {
               toast.success(
                 `Placa ${data.texto_final} registrada com sucesso!`
               );
-              updateStep(6, "completed");
+              updateStep(6, "completed", {
+                result: {
+                  placa: data.texto_final,
+                  padrao: data.padrao_placa,
+                  candidato: null,
+                },
+              });
             } else {
               toast.error("Falha ao detectar uma placa válida.");
-              updateStep(6, "failed");
+              updateStep(6, "failed", {
+                result: {
+                  placa: null,
+                  padrao: null,
+                  candidato: null,
+                },
+              });
             }
             setIsProcessing(false);
             ws?.close();
             break;
+          }
+
           case "error":
             toast.dismiss("processing-status");
             toast.error(`Erro no servidor: ${data.message}`);
             setIsProcessing(false);
-            updateStep(6, "failed");
+            updateStep(6, "failed", {
+              logMessages: [`Erro: ${data.message}`],
+            });
             ws?.close();
             break;
+
           default:
             break;
         }

@@ -28,21 +28,41 @@ class RegistroResponse(pydantic.BaseModel):
 class HealthCheck(pydantic.BaseModel):
     status: str
 
-# --- (Função Auxiliar de Codificação - Sem alterações) ---
+# --- (Função Auxiliar de Codificação - CORRIGIDA PARA RGB) ---
 def _encode_image_to_base64(image_array: np.ndarray) -> str:
+    """
+    Converte um array numpy (BGR do OpenCV) para base64 em formato PNG RGB.
+    O OpenCV trabalha em BGR, mas precisamos RGB para exibição correta no navegador.
+    """
     if image_array is None or image_array.size == 0:
         return None
     try:
+        # Se for escala de cinza, converte para BGR primeiro
         if len(image_array.shape) == 2:
             image_array = cv2.cvtColor(image_array, cv2.COLOR_GRAY2BGR)
+        
+        # CORREÇÃO: cv2.imencode espera BGR! 
+        # Não convertemos para RGB aqui, deixamos em BGR e o imencode salvará corretamente
+        # Depois precisamos converter para RGB usando PIL ou outro método
+        
+        # Converte BGR para RGB
         image_rgb = cv2.cvtColor(image_array, cv2.COLOR_BGR2RGB)
-        success, buffer = cv2.imencode(".png", image_rgb)
-        if not success:
-            return None
-        img_base64 = base64.b64encode(buffer).decode("utf-8")
+        
+        # Usamos PIL para garantir que o PNG seja salvo com canais RGB corretos
+        from PIL import Image
+        pil_image = Image.fromarray(image_rgb)  # PIL espera RGB
+        
+        # Salva em buffer
+        buffer = io.BytesIO()
+        pil_image.save(buffer, format="PNG")
+        buffer.seek(0)
+        
+        img_base64 = base64.b64encode(buffer.read()).decode("utf-8")
         return f"data:image/png;base64,{img_base64}"
     except Exception as e:
-        print(f"Erro ao codificar imagem: {e}", file=sys.stderr)
+        print(f"[ERRO] Falha ao codificar imagem: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
         return None
 
 # --- GERENCIADOR DE CONEXÕES WEBSOCKET PARA REGISTROS ---
@@ -153,8 +173,16 @@ async def processar_imagem_ws(websocket: WebSocket):
     main_event_loop = asyncio.get_running_loop()
     
     try:
+        # Lê a data de captura da query string enviada pelo frontend
+        capture_time_str = websocket.query_params.get("capture_time")
+        if capture_time_str:
+            # Parse da string ISO para datetime
+            data_capturada = datetime.fromisoformat(capture_time_str.replace('Z', '+00:00'))
+        else:
+            # Fallback para horário atual se não vier a data
+            data_capturada = datetime.now()
+        
         image_bytes = await websocket.receive_bytes() 
-        data_capturada = datetime.utcnow()
         await websocket.send_json({"step": "start", "message": "Imagem recebida, iniciando processamento..."})
 
         async def send_update_to_client(delta: dict):
@@ -167,7 +195,13 @@ async def processar_imagem_ws(websocket: WebSocket):
                     encoded_candidates.append(cand_copy)
                 encoded_delta["data"] = encoded_candidates
             elif "image" in delta:
-                encoded_delta["image"] = _encode_image_to_base64(delta["image"])
+                print(f"[DEBUG WS] Codificando imagem para step: {delta.get('step')}, rank: {delta.get('candidate_rank', 'N/A')}", file=sys.stderr)
+                encoded_image = _encode_image_to_base64(delta["image"])
+                if encoded_image:
+                    print(f"[DEBUG WS] Imagem codificada com sucesso. Tamanho: {len(encoded_image)} caracteres", file=sys.stderr)
+                else:
+                    print(f"[DEBUG WS] ERRO: Falha ao codificar imagem!", file=sys.stderr)
+                encoded_delta["image"] = encoded_image
             await websocket.send_json(encoded_delta)
 
         def on_update_sync_callback(delta: dict):

@@ -7,6 +7,7 @@ import TabelaRegistros, {
   Registro, // A interface Registro deve ser exportada de TabelaRegistros
 } from "@/components/Registros/TabelaRegistros";
 import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import {
   BarChart3,
   FileText,
@@ -34,50 +35,60 @@ const Registros = () => {
     placa: "",
     dataInicio: "",
     dataFim: "",
+    tipoPlaca: "TODOS", // Novo filtro
   });
 
   // 2. Lógica para manter os filtros aplicados ao estado global 'registros'
-  // Dispara o filtro sempre que 'registros' muda (novo registro via WS)
+  const handleFilter = useCallback(
+    (
+      filters: {
+        placa: string;
+        dataInicio: string;
+        dataFim: string;
+        tipoPlaca: string; // Novo parâmetro
+      },
+      sourceRegistros: Registro[] = registros
+    ) => {
+      setCurrentFilters(filters);
+      let filtered = [...sourceRegistros];
+
+      if (filters.placa) {
+        filtered = filtered.filter((r) =>
+          r.placa.toUpperCase().includes(filters.placa.toUpperCase())
+        );
+      }
+
+      if (filters.dataInicio) {
+        const dataInicio = new Date(filters.dataInicio);
+        filtered = filtered.filter((r) => new Date(r.dataHora) >= dataInicio);
+      }
+
+      if (filters.dataFim) {
+        const dataFim = new Date(filters.dataFim);
+        // Ajusta a hora para incluir todo o dia final
+        dataFim.setHours(23, 59, 59, 999);
+        filtered = filtered.filter((r) => new Date(r.dataHora) <= dataFim);
+      }
+
+      // Filtro por tipo de placa
+      if (filters.tipoPlaca && filters.tipoPlaca !== "TODOS") {
+        filtered = filtered.filter((r) => r.tipo_placa === filters.tipoPlaca);
+      }
+
+      // Aplica a ordenação, se necessário (geralmente por dataHora descendente)
+      filtered.sort(
+        (a, b) => new Date(b.dataHora).getTime() - new Date(a.dataHora).getTime()
+      );
+
+      setFilteredRegistros(filtered);
+    },
+    [registros]
+  );
+
+  // Dispara o filtro sempre que 'registros' ou 'currentFilters' muda
   useEffect(() => {
     handleFilter(currentFilters, registros);
-  }, [registros]);
-
-  const handleFilter = (
-    filters: {
-      placa: string;
-      dataInicio: string;
-      dataFim: string;
-    },
-    sourceRegistros: Registro[] = registros
-  ) => {
-    setCurrentFilters(filters);
-    let filtered = [...sourceRegistros];
-
-    if (filters.placa) {
-      filtered = filtered.filter((r) =>
-        r.placa.toUpperCase().includes(filters.placa.toUpperCase())
-      );
-    }
-
-    if (filters.dataInicio) {
-      const dataInicio = new Date(filters.dataInicio);
-      filtered = filtered.filter((r) => new Date(r.dataHora) >= dataInicio);
-    }
-
-    if (filters.dataFim) {
-      const dataFim = new Date(filters.dataFim);
-      // Ajusta a hora para incluir todo o dia final
-      dataFim.setHours(23, 59, 59, 999);
-      filtered = filtered.filter((r) => new Date(r.dataHora) <= dataFim);
-    }
-
-    // Aplica a ordenação, se necessário (geralmente por dataHora descendente)
-    filtered.sort(
-      (a, b) => new Date(b.dataHora).getTime() - new Date(a.dataHora).getTime()
-    );
-
-    setFilteredRegistros(filtered);
-  };
+  }, [registros, currentFilters, handleFilter]);
 
   // 3. Lógica de DELETE (Usando a função do hook)
   const handleDelete = async (id: number | string) => {
@@ -97,30 +108,41 @@ const Registros = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30">
       <Navigation />
 
-      <main className="container mx-auto px-6 py-8">
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12 max-w-[1600px]">
         {/* Header */}
-        <div className="mb-8 flex justify-between items-center">
-          <h1 className="text-4xl font-bold text-foreground mb-2 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Consulta de Placas
-          </h1>
-          {/* Indicador de Conexão WebSocket */}
-          <div
-            className={`flex items-center text-sm font-medium p-2 rounded-full ${
-              wsConnected
-                ? "bg-green-100 text-green-700"
-                : "bg-red-100 text-red-700"
-            }`}
-          >
-            <Wifi
-              className={`h-4 w-4 mr-2 ${wsConnected ? "animate-pulse" : ""}`}
-            />
-            {wsConnected
-              ? "LIVE: Registros em Tempo Real"
-              : "WebSocket Desconectado"}
+        <div className="mb-10 space-y-5">
+          <div className="flex justify-between items-center">
+            <div>
+              <div className="flex items-center gap-3 mb-3">
+                <h1 className="text-4xl lg:text-5xl font-bold text-foreground tracking-tight">
+                  Consulta de Placas
+                </h1>
+              </div>
+              <p className="text-muted-foreground text-base sm:text-lg">
+                Histórico completo de registros processados
+              </p>
+            </div>
+            {/* Indicador de Conexão WebSocket */}
+            <div
+              className={`flex items-center text-sm font-medium px-4 py-2 rounded-full ${
+                wsConnected
+                  ? "bg-green-100 dark:bg-green-950/30 text-green-700 dark:text-green-400"
+                  : "bg-red-100 dark:bg-red-950/30 text-red-700 dark:text-red-400"
+              }`}
+            >
+              <Wifi
+                className={`h-4 w-4 mr-2 ${wsConnected ? "animate-pulse" : ""}`}
+              />
+              {wsConnected
+                ? "LIVE: Tempo Real"
+                : "Desconectado"}
+            </div>
           </div>
+
+          <Separator className="bg-border/60" />
         </div>
 
         {/* Filtros */}
